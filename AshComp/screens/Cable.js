@@ -6,6 +6,7 @@ import { Image } from "expo-image";
 import { Color, FontFamily, FontSize, Border } from "../GlobalStyles";
 import axios from "axios";
 import * as Clipboard from 'expo-clipboard';
+import { useUser } from "../contexts/UserContext";
 
 
 const Cable = () => {
@@ -14,10 +15,11 @@ const Cable = () => {
   const [distributionCompanies, setDistributionCompanies] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [selectedPackage, setSelectedPackage] = useState("");
+  const [amount, setAmount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [Number, setNumber] = useState("");
   const [selectedProductCode, setSelectedProductCode] = useState("");
-
+  const { userData, loading, wallet } = useUser();
 
   useEffect(() => {
     fetchDistributionCompanies();
@@ -36,14 +38,13 @@ const Cable = () => {
 
   const handlePackageChange = (pkg) => {
     setSelectedPackage(pkg);
-    // Find the corresponding product code for the selected package
     const selectedPackageData = filteredData.find(item => item.service_name === pkg);
     if (selectedPackageData) {
-      // Set the product code for the selected package
       setSelectedProductCode(selectedPackageData.product_code);
+      setAmount(selectedPackageData.price); // Update the amount here
     }
   };
-  
+
   const handleCopyToClipboard = async () => {
     await Clipboard.setStringAsync(Number);
     alert('Copied to clipboard!');
@@ -59,70 +60,94 @@ const Cable = () => {
   };
 
   const handlePayBill = async () => {
-    
-  
+    if (!selectedProductCode || !Number) {
+      Alert.alert("Input all fields");
+      return;
+  }
+
     setIsLoading(true);
   
     try {
-      // Fetch CSRF token
-      const csrfResponse = await axios.get('http://192.168.43.179:8000/api/get-csrf-token/');
-      const csrfToken = csrfResponse.data.csrf_token;
+      const flutterwaveParams = {
+        account_bank: '035',
+        account_number: '8548105217',
+        amount: amount,
+        currency: 'NGN',
+        narration: `Subscription for ${selectedProductCode}, Smart Card Number: ${Number}`,
+        debit_subaccount: `${userData.account_reference}`
+      };
+      console.log(flutterwaveParams);
   
-      // Prepare data for API request
+      const flutterwaveHeaders = {
+        'Authorization': `Bearer FLWSECK-fab12578d0fa352253f89fd6a7b7b713-18f55ce05d4vt-X`, // Corrected line
+        'Content-Type': 'application/json'
+      };
+  
+      const transferResponse = await axios.post('https://api.flutterwave.com/v3/transfers', flutterwaveParams, {
+        headers: flutterwaveHeaders
+      });
+  
+      if (transferResponse.data.status === 'success' && transferResponse.data.message === 'Transfer Queued Successfully') {
+        console.log("Feedback: ", transferResponse.data.message);
+  
+        const csrfResponse = await axios.get('http://192.168.43.179:8000/api/get-csrf-token/');
+        const csrfToken = csrfResponse.data.csrf_token;
+  
+        
       const requestBody = {
         product_code: selectedProductCode,
         number: Number,
         
       };
   
-      // Send POST request to backend API with CSRF token included in headers
-      axios.post('http://192.168.43.179:8000/api/buy-tv/', requestBody, {
-        headers: {
-          'X-CSRFToken': csrfToken,
-          'Content-Type': 'application/json' // Ensure you set the correct content type
-        }
-      })
-      .then(response => {
         console.log('Data sent to backend:', requestBody);
-        console.log('Response from backend:', response.data);
-        // Handle response from backend if needed
-        Alert.alert(response.data.reasons);
-      })
-      .catch(error => {
-        console.error('Error:', error);
-        // Handle error
-        Alert.alert("Failed to subscription. Please try again later.");
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+  
+        axios.post('http://192.168.43.179:8000/api/buy-tv/', requestBody, {
+          headers: {
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/json' // Ensure you set the correct content type
+          }
+        })
+          .then(response => {
+            console.log('Data sent to backend:', requestBody);
+            console.log('Response from backend:', response.data);
+            // Handle response from backend if needed
+            Alert.alert("Success");
+            navigation.navigate("Home")
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            // Handle error
+            Alert.alert("Subscription Failed. Try again.");
+          })
+          .finally(() => {
+            setIsLoading(false);
+          });
+      }
     } catch (error) {
       console.error('Error:', error);
       // Handle error
-      Alert.alert("Failed to fetch CSRF token. Please try again later.");
-      setIsLoading(false);
     }
   };
 
+
+
   return (
     <ScrollView>
-    <View style={styles.cable}>
-      <View style={styles.cableChild} />
-      
-      <View>
-      <Pressable onLongPress={handleCopyToClipboard} style={styles.smartcardNumber}>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Enter Smartcard Number"
-          keyboardType="numeric"
-          onChangeText={(text) => setNumber(text)}
-          value={Number}
-        />
-      </Pressable>
-      </View>
-      
-      
-       <View style={styles.frameParent}>
+      <View style={styles.cable}>
+        <View style={styles.cableChild} />
+        <View>
+          <Pressable onLongPress={handleCopyToClipboard} style={styles.smartcardNumber}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Enter Smartcard Number"
+              keyboardType="numeric"
+              onChangeText={(text) => setNumber(text)}
+              value={Number}
+            />
+          </Pressable>
+        </View>
+        <View style={styles.frameParent}>
           <Picker
             style={styles.providerPicker}
             selectedValue={selectedProvider}
@@ -149,47 +174,47 @@ const Cable = () => {
           </Picker>
         </View>
         <View style={styles.slide}>
-       {isLoading ? (
-    <ActivityIndicator size="large" color="#0000ff" />
-) : (
-  <Pressable onPress={handlePayBill}>
-  <Text style={[ styles.buyTypo, styles.buyButton]}>Buy</Text>
-</Pressable>
-)}
-
+          {isLoading ? (
+            <ActivityIndicator size="large" color="#0000ff" />
+          ) : (
+            <Pressable onPress={handlePayBill}>
+              <Text style={[ styles.buyTypo, styles.buyButton]}>Buy</Text>
+            </Pressable>
+          )}
+          <Image
+            style={[styles.teenyiconsarrowSolid, styles.slideItemLayout]}
+            contentFit="cover"
+            source={require("../assets/teenyiconsarrowsolid.png")}
+          />
+        </View>
+        <View style={styles.rectangleParent}>
+          <View style={[styles.groupChild, styles.groupPosition]} />
+          <View style={[styles.groupItem, styles.groupPosition]} />
+          <Text style={[styles.atm, styles.atmTypo]}>ATM</Text>
+          <Text style={[styles.wallet, styles.atmTypo]}>WALLET</Text>
+        </View>
         <Image
-          style={[styles.teenyiconsarrowSolid, styles.slideItemLayout]}
+          style={[styles.rectangleIcon, styles.slidePosition]}
           contentFit="cover"
-          source={require("../assets/teenyiconsarrowsolid.png")}
+          source={require("../assets/rectangle-9.png")}
         />
+        <Text style={[styles.payForCable, styles.buyTypo]}>Pay for Cable</Text>
+        <Text style={styles.walletBalance5000}>Wallet Balance: ₦{wallet} </Text>
+        <Pressable
+          style={styles.mingcutebackFill}
+          onPress={() => navigation.goBack()}
+        >
+          <Image
+            style={styles.icon}
+            contentFit="cover"
+            source={require("../assets/mingcutebackfill.png")}
+          />
+        </Pressable>
       </View>
-      <View style={styles.rectangleParent}>
-        <View style={[styles.groupChild, styles.groupPosition]} />
-        <View style={[styles.groupItem, styles.groupPosition]} />
-        <Text style={[styles.atm, styles.atmTypo]}>ATM</Text>
-        <Text style={[styles.wallet, styles.atmTypo]}>WALLET</Text>
-      </View>
-      <Image
-        style={[styles.rectangleIcon, styles.slidePosition]}
-        contentFit="cover"
-        source={require("../assets/rectangle-9.png")}
-      />
-      <Text style={[styles.payForCable, styles.buyTypo]}>Pay for Cable</Text>
-    
-      <Pressable
-        style={styles.mingcutebackFill}
-        onPress={() => navigation.goBack()}
-      >
-        <Image
-          style={styles.icon}
-          contentFit="cover"
-          source={require("../assets/mingcutebackfill.png")}
-        />
-      </Pressable>
-    </View>
     </ScrollView>
   );
 };
+
 
 const styles = StyleSheet.create({
   cableLayout: {
@@ -454,7 +479,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   mingcutebackFill: {
-    left: 372,
+    left: 30,
     top: 43,
     width: 24,
     height: 24,

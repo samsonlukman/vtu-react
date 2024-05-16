@@ -1,8 +1,9 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Image } from "expo-image";
-import { StyleSheet, Text, View, Pressable, Modal, ScrollView } from "react-native";
+import { Animated, StyleSheet, Text, View, Pressable, Modal, ScrollView, Button } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import Frame1 from "../components/Frame1";
+import Frame2 from "../components/frame2";
 import Frame from "../components/Frame";
 import SideBar from "../components/SideBar";
 import { Color, FontSize, FontFamily, Border } from "../GlobalStyles";
@@ -46,6 +47,19 @@ const Home = () => {
     setVectorIconVisible(true);
   }, []);
 
+  const scrollAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const scrollWidth = 500; // Adjust this width based on your design
+    Animated.loop(
+      Animated.timing(scrollAnim, {
+        toValue: -scrollWidth,
+        duration: 10000,
+        useNativeDriver: true,
+      })
+    ).start();
+  }, [scrollAnim]);
+
   const closeVectorIcon = useCallback(() => {
     setVectorIconVisible(false);
   }, []);
@@ -76,7 +90,25 @@ const Home = () => {
   }, [user, fetchUserData]);
 
   
+  const fetchAccountInfo = useCallback(async () => {
+    try {
+      const accountReference = userData?.account_reference; // Assuming order_ref is available in userData
+      const accessToken = 'FLWSECK-fab12578d0fa352253f89fd6a7b7b713-18f55ce05d4vt-X'; // Your Flutterwave access token
+      const flutterwaveUrl = `https://api.flutterwave.com/v3/payout-subaccounts/${accountReference}/balances`;
   
+      const response = await axios.get(flutterwaveUrl, {
+        "currency": "NGN",
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        }
+      });
+      setWallet(response.data.data.available_balance); // Set wallet amount from response
+      console.log(response.data)
+    } catch (error) {
+      console.error('Error fetching account info:', error);
+    }
+  }, [userData])
 
   useEffect(() => {
     // Fetch user data if user is logged in
@@ -87,6 +119,40 @@ const Home = () => {
     }
   }, [user, fetchUserData]);
 
+  useEffect(() => {
+    // Fetch account info once userData is available
+    if (userData) {
+      fetchAccountInfo();
+    }
+  }, [userData, fetchAccountInfo]);
+
+  const csrfUrl = 'http://192.168.43.179:8000/api/get-csrf-token/';
+
+  const incrementAccountBalance = async (amount) => {
+    try {
+      const csrfResponse = await axios.get(`${csrfUrl}`);
+      const csrfToken = csrfResponse.data.csrf_token;
+      const url = 'http://192.168.43.179:8000/api/increment-account-balance/';
+      
+      const headers = {
+        'Content-Type': 'multipart/form-data',
+        'X-CSRFToken': csrfToken,
+      };
+  
+      const data = new FormData();
+      data.append('amount', wallet);
+  
+      const response = await axios.post(url, data, { headers });
+  
+      if (response.status === 200) {
+        console.log('Account balance updated successfully');
+      } else {
+        console.error('Failed to update account balance:', response.data.detail);
+      }
+    } catch (error) {
+      console.error('Error updating account balance:', error.message);
+    }
+  };
 
   if (loading) {
     // Render loading indicator or skeleton screen while fetching user data
@@ -102,6 +168,8 @@ const Home = () => {
     <>
     <ScrollView>
       <View style={styles.home}>
+      
+
         <Image
           style={styles.homeChild}
           contentFit="cover"
@@ -130,7 +198,7 @@ const Home = () => {
 {user && user.isAuthenticated ? (
   <>
     <Text style={[styles.n2460000, styles.historyTypo]}>
-      {userData && userData.account_number ? `N${userData.account_balance.toLocaleString()}` : '*** *** ***'}
+      {userData && userData.account_number ? `₦${wallet.toLocaleString()}` : '*** *** ***'}
     </Text>
     <Text style={[styles.n24600001, styles.historyTypo]}>
       {userData && userData.account_number ? `${userData.account_number}` : '*** *** ***'}
@@ -145,16 +213,18 @@ const Home = () => {
 
 
         <View style={[styles.rectangleView, styles.slidePosition]} />
-        <Text style={[styles.history, styles.historyTypo]}>History</Text>
-        <View style={styles.fundWallet} />
-        <Pressable
- 
-  onPress={() => alert('HI')}
->
-  <Text style={[styles.fundWallet1, styles.fundWallet1Typo]}>
-    Fund Wallet
-  </Text>
-</Pressable>
+        <Pressable style={[styles.historyPressable, styles.slidePosition]} onPress={openSLIDEContainer}>
+            <View style={styles.animatedContainer}>
+              <Animated.Text style={[styles.history, styles.historyTypo, {
+                transform: [{ translateX: scrollAnim }]
+              }]}>
+                Choose SME data for cheap data plans
+              </Animated.Text>
+            </View>
+          </Pressable>
+        
+        
+        
 
         <View style={styles.serviceButtons}>
           <View style={[styles.cable, styles.cableLayout]}>
@@ -189,7 +259,7 @@ const Home = () => {
           </View>
           <Pressable
             style={[styles.frame, styles.framePosition]}
-            onPress={() => navigation.navigate("PayBill1")}
+            onPress={() => navigation.navigate("BuySmeData")}
           >
             <Image
               style={[styles.icon, styles.iconLayout1]}
@@ -223,7 +293,7 @@ const Home = () => {
                 source={require("../assets/rectangle-11.png")}
               />
             </Pressable>
-            <Text style={[styles.buyData1, styles.buyTypo]}>Buy Data</Text>
+            <Text style={[styles.buyData1, styles.buyTypo]}>Corporate Data</Text>
           </View>
           <Image
             style={[styles.serviceButtonsChild, styles.payBillPosition]}
@@ -244,30 +314,37 @@ const Home = () => {
             <Text style={[styles.payBill1, styles.buyTypo]}>Pay Bill</Text>
           </View>
           <Text style={[styles.rechargePin, styles.fundWallet1Typo]}>
-            Recharge Pin
+            Cheap SME Data
           </Text>
-          <View style={[styles.contactUs, styles.sharePosition]}>
-            <Pressable
-              style={[styles.contactUsChild, styles.childShadowBox]}
-              onPress={openRectangle1}
-            />
-            <Image
-              style={styles.contactUsItem}
-              contentFit="cover"
-              source={require("../assets/rectangle-26.png")}
-            />
-            <Image
-              style={[
-                styles.materialSymbolscontactPageIcon,
-                styles.iconPosition,
-              ]}
-              contentFit="cover"
-              source={require("../assets/materialsymbolscontactpage.png")}
-            />
-            <Text style={[styles.withdrawal, styles.shareAppTypo]}>
-              Contact Us
-            </Text>
-          </View>
+         
+
+  <View style={[styles.contactUs, styles.sharePosition]}>
+  <Pressable onPress={openRectangle1} style={{ flex: 1 }}>
+    <View style={[styles.contactUsChild, styles.childShadowBox]} />
+
+    <Image
+      style={styles.contactUsItem}
+      contentFit="cover"
+      source={require("../assets/rectangle-26.png")}
+    />
+
+    <Image
+      style={[
+        styles.materialSymbolscontactPageIcon,
+        styles.iconPosition,
+      ]}
+      contentFit="cover"
+      source={require("../assets/materialsymbolscontactpage.png")}
+    />
+
+    <Text style={[styles.withdrawal, styles.shareAppTypo]}>
+      Contact Us
+    </Text>
+    </Pressable>
+  </View>
+
+
+
           <View style={[styles.share, styles.sharePosition]}>
             <Pressable
               style={[styles.shareChild, styles.childShadowBox]}
@@ -288,25 +365,7 @@ const Home = () => {
             </Text>
           </View>
         </View>
-        <Pressable
-          style={[styles.slide, styles.slidePosition]}
-          onPress={openSLIDEContainer}
-        >
-          <View style={[styles.slideUp, styles.slideShadowBox]}>
-            <View style={[styles.slideUpChild, styles.slideShadowBox]} />
-          </View>
-          <Image
-            style={styles.subtractIcon}
-            contentFit="cover"
-            source={require("../assets/subtract.png")}
-          />
-          <Image
-            style={[styles.raphaelarrowupIcon, styles.iconPosition]}
-            contentFit="cover"
-            source={require("../assets/raphaelarrowup.png")}
-          />
-          <Text style={[styles.history1, styles.history1FlexBox]}>History</Text>
-        </Pressable>
+        
         <Pressable style={styles.vector} onPress={openVectorIcon}>
           <Image
             style={[styles.icon6, styles.iconLayout]}
@@ -331,7 +390,7 @@ const Home = () => {
       <Modal animationType="fade" transparent visible={rectangle2Visible}>
         <View style={styles.rectangle2Overlay}>
           <Pressable style={styles.rectangle2Bg} onPress={closeRectangle2} />
-          <Frame1 onClose={closeRectangle2} />
+          <Frame2 onClose={closeRectangle2} />
         </View>
       </Modal>
 
@@ -352,7 +411,7 @@ const Home = () => {
         </View>
       </Modal>
 
-      <View height={100}></View>
+    
       </ScrollView>
     </>
   );
@@ -363,6 +422,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20, // Add horizontal padding
   },
+  
   history1FlexBox: {
     textAlign: "left",
     position: "absolute",
@@ -544,7 +604,7 @@ const styles = StyleSheet.create({
   },
   history: {
     top: 459,
-    left: 35,
+    left: 400,
     color: Color.colorDarkcyan_100,
   },
   fundWallet: {
@@ -591,7 +651,7 @@ const styles = StyleSheet.create({
     
   },
   buyData1: {
-    left: 31,
+    left: 20,
     color: Color.colorGray_100,
   },
   buyData: {
@@ -610,7 +670,7 @@ const styles = StyleSheet.create({
   },
   rechargePin: {
     top: 256,
-    left: 150,
+    left: 129,
     color: Color.colorWhite,
   },
   rectangle1Overlay: {
@@ -779,7 +839,7 @@ const styles = StyleSheet.create({
   home: {
     backgroundColor: Color.colorWhite,
     flex: 1,
-    height: 932,
+    height: 1000,
     width: "100%",
   },
 });

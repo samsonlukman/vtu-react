@@ -22,17 +22,12 @@ const About = () => {
       <Text style={[styles.payville, styles.payvilleTypo]}>PAYVILLE</Text>
       <Text
         style={[styles.doesTheSea, styles.doesTypo]}
-      >{`Does the sea of sales tools and countless tabs have you worried about missing opportunities? Stop spinning your wheels trying to hit your ever-growing quotas with tools that are too scrappy or too complex. With Crunchbase’s new HubSpot integration, you can easily build and track your pipeline with a single, easy-to-use solution.
-Now, HubSpot users can quickly discover new prospects, push them directly to HubSpot, and own them instantly. You’ll also see HubSpot details within Crunchbase so you can track prospects already in your CRM and identify those that need your attention. By leveraging Crunchbase’s best-in-class data, you’ll discover growing companies you can’t find anywhere else, and pinpoint the ones that are in a position to buy.
-Here’s how to use Crunchbase’s HubSpot integration to prospect smarter and faster.
-Operation`}</Text>
-      <Text style={[styles.operation, styles.payvilleTypo]}>Operation</Text>
-      <Text
-        style={[styles.doesTheSea1, styles.doesTypo]}
-      >{`Does the sea of sales tools and countless tabs have you worried about missing opportunities? Stop spinning your wheels trying to hit your ever-growing quotas with tools that are too scrappy or too complex. With Crunchbase’s new HubSpot integration, you can easily build and track your pipeline with a single, easy-to-use solution.
-Now, HubSpot users can quickly discover new prospects, push them directly to HubSpot, and own them instantly. You’ll also see HubSpot details within Crunchbase so you can track prospects already in your CRM and identify those that need your attention. By leveraging Crunchbase’s best-in-class data, you’ll discover growing companies you can’t find anywhere else, and pinpoint the ones that are in a position to buy.
-Here’s how to use Crunchbase’s HubSpot integration to prospect smarter and faster.
-`}</Text>
+      >  {`Welcome to our VTU app where users can purchase airtime, data, pay for electricity, and TV subscriptions.
+
+      We offer cheap data rates to help you stay connected without breaking the bank.
+      
+      Experience seamless transactions and unbeatable prices with our app today!`}</Text>
+      
     </View>
   );
 };
@@ -61,7 +56,7 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   mingcutebackFill: {
-    left: 372,
+    left: 30,
     top: 43,
     width: 24,
     height: 24,
@@ -76,7 +71,7 @@ const styles = StyleSheet.create({
   },
   doesTheSea: {
     top: 205,
-    left: 49,
+    left: 5,
     height: 224,
   },
   operation: {

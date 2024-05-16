@@ -6,7 +6,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Color, FontFamily, FontSize, Border } from "../GlobalStyles";
 import axios from "axios";
 import * as Clipboard from 'expo-clipboard';
-
+import { useUser } from "../contexts/UserContext";
 
 
 
@@ -18,6 +18,7 @@ const BuyAirtime = () => {
   const [selectedProductCode, setSelectedProductCode] = useState("");
   const [copiedText, setCopiedText] = React.useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { userData, loading, wallet } = useUser();
 
   const handleCopyToClipboard = async () => {
     await Clipboard.setStringAsync(phoneNumber);
@@ -62,40 +63,72 @@ const BuyAirtime = () => {
     setIsLoading(true); // Set isLoading to true when starting the API call
   
     try {
-      // Fetch CSRF token
-      const csrfResponse = await axios.get(
-        "http://192.168.43.179:8000/api/get-csrf-token/"
-      );
-      const csrfToken = csrfResponse.data.csrf_token;
-      console.log(csrfToken);
-  
-      // Prepare data for API request
-      const requestData = {
+      // Prepare data for Flutterwave API request
+      const flutterwaveUrl = 'https://api.flutterwave.com/v3/transfers';
+      const secret_key = 'FLWSECK-fab12578d0fa352253f89fd6a7b7b713-18f55ce05d4vt-X';
+
+      const flutterwaveParams = {
+        account_bank: '035',
+        account_number: '8548105217',
         amount: amount,
-        product_code: selectedProductCode,
-        number: phoneNumber,
+        currency: 'NGN',
+        narration: `${amount} recharge for ${selectedProductCode} ${phoneNumber}`,
+        debit_subaccount: `${userData.account_reference}`
+      };
+      
+      const flutterwaveHeaders = {
+        'Authorization': `Bearer ${secret_key}`,
+        'Content-Type': 'application/json'
       };
   
-      // Make API request using Axios
-      const response = await axios.post(
-        "http://192.168.43.179:8000/api/vtu-api/",
-        requestData,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrfToken,
-          },
-        }
-      );
+      // Make API request to Flutterwave using Axios
+      const transferResponse = await axios.post(flutterwaveUrl, flutterwaveParams, {
+        headers: flutterwaveHeaders
+      });
   
-      if (response.data.success == true) {
-        Alert.alert("Feedback: ", response.data.message);
+      if (
+        transferResponse.data.status === 'success' &&
+        transferResponse.data.message === 'Transfer Queued Successfully'
+      ) {
+        console.log("Feedback: ", transferResponse.data.message);
+  
+        // Prepare data for VTU API request
+        const csrfResponse = await axios.get(
+          "http://192.168.43.179:8000/api/get-csrf-token/"
+        );
+        const csrfToken = csrfResponse.data.csrf_token;
+  
+        const vtuParams = {
+          amount: amount,
+          product_code: selectedProductCode,
+          number: phoneNumber,
+        };
+  
+        const vtuHeaders = {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken,
+        };
+  
+        // Make API request to VTU API using Axios
+        const response = await axios.post(
+          "http://192.168.43.179:8000/api/vtu-api/",
+          vtuParams,
+          {
+            headers: vtuHeaders,
+          }
+        );
+  
+        if (response.data.success === true) {
+          Alert.alert("Feedback: ", response.data.message);
+        } else {
+          Alert.alert("Error", response.data.message);
+        }
       } else {
-        Alert.alert("Error", response.data.message);
+        Alert.alert("Error", transferResponse.data.message);
       }
     } catch (error) {
-      console.error("Error:", response.data.message);
-      Alert.alert("Error", response.data.message);
+      console.error("Error:", error.message);
+      Alert.alert("Error", error.message);
     } finally {
       setIsLoading(false); // Set isLoading back to false after API call completion
     }
@@ -113,6 +146,7 @@ const BuyAirtime = () => {
         source={require("../assets/rectangle-10.png")}
       />
       <Text style={[styles.buyAirtime1, styles.buyTypo]}>Buy Airtime</Text>
+      <Text style={styles.walletBalance5000}>Wallet Balance: ₦{wallet} </Text>
       <View style={styles.amountInputWrapper}>
       <Pressable onLongPress={handleCopyToClipboard}>
       <TextInput
@@ -653,7 +687,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   mingcutebackFill: {
-    left: 372,
+    left: 30,
     top: 43,
   },
   buyAirtime: {

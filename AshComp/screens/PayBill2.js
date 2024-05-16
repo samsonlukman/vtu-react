@@ -1,38 +1,249 @@
 import * as React from "react";
-import { StyleSheet, View, Text, Pressable } from "react-native";
+import { StyleSheet, View, Text, Pressable, TextInput, Alert, ScrollView, ActivityIndicator } from "react-native";
+import { Picker } from "@react-native-picker/picker";
 import { Image } from "expo-image";
 import { useNavigation } from "@react-navigation/native";
 import { Color, FontFamily, FontSize, Border } from "../GlobalStyles";
+import { useUser } from "../contexts/UserContext";
+import axios from "axios";
+
 
 const PayBill2 = () => {
   const navigation = useNavigation();
+  const { userData, loading, wallet } = useUser();
+  const [accountBank, setAccountBank] = React.useState(""); // State for selected bank code
+  const [accountNumber, setAccountNumber] = React.useState(""); // State for account number
+  const [amount, setAmount] = React.useState(""); // State for amount
+  const [narration, setNarration] = React.useState(""); // State for narration
+  const [banks, setBanks] = React.useState([]);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [accountName, setAccountName] = React.useState("");
+  const toTitleCase = (str) => {
+    return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  };
+  
+
+  React.useEffect(() => {
+    // Fetch bank data from API
+    const fetchBanks = async () => {
+      try {
+        const response = await axios.get("https://api.flutterwave.com/v3/banks/NG", {
+          headers: {
+            Authorization: "FLWSECK-fab12578d0fa352253f89fd6a7b7b713-18f55ce05d4vt-X",
+          },
+        });
+    
+        // Sort banks alphabetically by name
+        const sortedBanks = response.data.data.sort((a, b) => {
+          if (a.name < b.name) {
+            return -1;
+          }
+          if (a.name > b.name) {
+            return 1;
+          }
+          return 0;
+        });
+    
+        console.log(sortedBanks); // Check if the banks are sorted correctly
+        setBanks(sortedBanks);
+      } catch (error) {
+        console.error("Error fetching banks:", error);
+        Alert.alert("Error fetching banks. Please try again later.");
+      }
+    };
+    
+
+    fetchBanks();
+  }, []);
+
+  const handleCopyToClipboard = async () => {
+    await Clipboard.setStringAsync(Number);
+    alert('Copied to clipboard!');
+  };
+
+
+  
+  const handleBankSelection = async (selectedBank) => {
+    setAccountBank(selectedBank); // Set the selected bank code
+
+    // Check if account number length is 10 and perform verification
+    if (accountNumber.length === 10) {
+      await handleVerifyBank(selectedBank, accountNumber);
+    }
+  };
+
+  const handleAccountNumberChange = async (text) => {
+    setAccountNumber(text);
+
+    // Check if account number length is 10 and perform verification
+    if (text.length === 10) {
+      await handleVerifyBank(accountBank, text);
+    }
+    else{
+      setAccountName("")
+    }
+  };
+
+  const handleVerifyBank = async (bankCode, accountNumber) => {
+    setIsLoading(true);
+    try {
+      // Prepare data for Flutterwave account verification request
+      const verifyBankUrl = 'https://api.flutterwave.com/v3/accounts/resolve';
+      const secret_key = 'FLWSECK-fab12578d0fa352253f89fd6a7b7b713-18f55ce05d4vt-X';
+
+      const verifyParams = {
+        account_bank: bankCode,
+        account_number: accountNumber
+      };
+
+      const flutterwaveHeaders = {
+        'Authorization': `Bearer ${secret_key}`,
+        'Content-Type': 'application/json'
+      };
+
+      // Make API request to Flutterwave using Axios
+      const verifyResponse = await axios.post(verifyBankUrl, verifyParams, {
+        headers: flutterwaveHeaders
+      });
+
+      if (verifyResponse.data.status === 'success') {
+        setAccountName(verifyResponse.data.data.account_name);
+      } else {
+        setAccountName("");
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      Alert.alert("Invalid Details");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleTransfer = async () => {
+    if (!accountBank || !accountNumber || !amount) {
+      Alert.alert("Please fill in all fields");
+      return;
+    }
+    
+    if(amount > wallet){
+      Alert.alert("Insufficient Balance")
+    }
+  
+    setIsLoading(true);
+  
+    try {
+      // Prepare data for Flutterwave API request
+      const flutterwaveUrl = 'https://api.flutterwave.com/v3/transfers';
+      const secret_key = 'FLWSECK-fab12578d0fa352253f89fd6a7b7b713-18f55ce05d4vt-X';
+  
+      const flutterwaveParams = {
+        account_bank: accountBank,
+        account_number: accountNumber,
+        amount: amount,
+        currency: 'NGN',
+        narration: narration,
+        debit_subaccount: `${userData.account_reference}`
+      };
+      
+      const flutterwaveHeaders = {
+        'Authorization': `Bearer ${secret_key}`,
+        'Content-Type': 'application/json'
+      };
+  
+      // Make API request to Flutterwave using Axios
+      const transferResponse = await axios.post(flutterwaveUrl, flutterwaveParams, {
+        headers: flutterwaveHeaders
+      });
+  
+      if (
+        transferResponse.data.status === 'success' &&
+        transferResponse.data.message === 'Transfer Queued Successfully'
+      ) {
+        console.log("Feedback: ", transferResponse.data.message);
+        Alert.alert(`Transfer Successful`)
+        
+      }
+
+    } catch (error) {
+      console.error('Error:', error);
+      Alert.alert("Error: Something went wrong");
+      navigation.navigate("Home")
+    } finally {
+      setIsLoading(false); // Set isLoading back to false after API call completion
+    }
+  };
+  
+
+    
 
   return (
+    <ScrollView>
     <View style={styles.payBill}>
       <View style={[styles.payBillChild, styles.slidePosition]} />
       
-      <View style={[styles.payBillItem, styles.payLayout]} />
-      <View style={[styles.payBillInner, styles.payLayout]} />
-      <View style={[styles.rectangleView, styles.payLayout]} />
-      <Text style={[styles.cardName, styles.selectTypo]}>Card Name</Text>
-      <Text style={[styles.quantity, styles.selectTypo]}>Quantity</Text>
-      <Text style={[styles.selectAmount, styles.selectTypo]}>
-        Select Amount
-      </Text>
-      <View style={[styles.slide, styles.slidePosition]}>
-        <View style={styles.slideChild} />
-        <Image
-          style={[styles.slideItem, styles.slideItemLayout]}
-          contentFit="cover"
-          source={require("../assets/ellipse-12.png")}
-        />
-        <Text style={[styles.buy, styles.buyTypo]}>Buy</Text>
+      <TextInput
+        style={[styles.cardName, styles.selectTypo]}
+        placeholder="Enter narration"
+        value={narration}
+        onChangeText={(text) => setNarration(text)}
+      />
+      {/* Text input for amount */}
+      <TextInput
+        style={[styles.quantity, styles.selectTypo]}
+        placeholder="Enter amount"
+        keyboardType="numeric"
+        value={amount}
+        onChangeText={(text) => setAmount(text)}
+      />
+       {/* Text input for account number */}
+       <TextInput
+        style={[styles.selectAmount, styles.selectTypo]}
+        placeholder="Enter account number"
+        keyboardType="numeric"
+        value={accountNumber}
+        onChangeText={handleAccountNumberChange}
+      />
+
+      {/* Display account name */}
+      {isLoading ? (
+          <ActivityIndicator size="small" color="#0000ff" />
+        ) : (
+          accountName !== "" && <Text style={[styles.nameDisplay, styles.selectTypo]}>{toTitleCase(accountName)}</Text>
+        )}
+       {/* Picker for selecting bank */}
+       <View style={styles.pickerContainer}>
+        
+        <Picker
+          style={styles.picker}
+          selectedValue={accountBank}
+          onValueChange={(itemValue, itemIndex) => handleBankSelection(itemValue)}
+        >
+          <Picker.Item label="Select Bank" value="" />
+          {/* Populate picker items dynamically */}
+          {banks.map((bank) => (
+            <Picker.Item key={bank.code} label={bank.name} value={bank.code} />
+          ))}
+        </Picker>
+      </View>
+
+     
+
+      <View style={styles.slide}>
+       {isLoading ? (
+    <ActivityIndicator size="large" color="#0000ff" />
+) : (
+  <Pressable onPress={handleTransfer}>
+  <Text style={[ styles.buyTypo, styles.buyButton]}>Buy</Text>
+</Pressable>
+)}
+
         <Image
           style={[styles.teenyiconsarrowSolid, styles.slideItemLayout]}
           contentFit="cover"
           source={require("../assets/teenyiconsarrowsolid.png")}
         />
       </View>
+      
       <View style={styles.rectangleParent}>
         <View style={[styles.groupChild, styles.groupPosition]} />
         <View style={[styles.groupItem, styles.groupPosition]} />
@@ -42,26 +253,13 @@ const PayBill2 = () => {
       <View style={[styles.network, styles.payPosition]}>
         <View style={[styles.selectNetworkParent, styles.payLayout]}>
           <Text style={[styles.selectNetwork, styles.selectTypo]}>
-            Select Network
+            Select Bank
           </Text>
           <Image
             style={styles.frameChild}
             contentFit="cover"
             source={require("../assets/vector-2.png")}
           />
-        </View>
-        <View style={styles.frameParent}>
-          <View style={[styles.dstvWrapper, styles.payLayout]}>
-            <Text style={[styles.selectNetwork, styles.selectTypo]}>DSTV</Text>
-          </View>
-          <View style={[styles.dstvWrapper, styles.payLayout]}>
-            <Text style={[styles.selectNetwork, styles.selectTypo]}>GoTV</Text>
-          </View>
-          <View style={[styles.dstvWrapper, styles.payLayout]}>
-            <Text style={[styles.selectNetwork, styles.selectTypo]}>
-              StarTimes
-            </Text>
-          </View>
         </View>
       </View>
       <Image
@@ -70,6 +268,7 @@ const PayBill2 = () => {
         source={require("../assets/rectangle-16.png")}
       />
       <Text style={[styles.withdrawal, styles.buyTypo]}>Withdrawal</Text>
+      <Text style={styles.walletBalance5000}>Wallet Balance: ₦{wallet} </Text>
       <Pressable
         style={styles.mingcutebackFill}
         onPress={() => navigation.goBack()}
@@ -81,6 +280,7 @@ const PayBill2 = () => {
         />
       </Pressable>
     </View>
+    </ScrollView>
   );
 };
 
@@ -89,12 +289,9 @@ const styles = StyleSheet.create({
     left: "50%",
     position: "absolute",
   },
-  payLayout: {
-    height: 37,
-    width: 279,
-  },
+ 
   selectTypo: {
-    color: Color.colorDarkgray,
+    color: Color.colorBlack,
     fontFamily: FontFamily.robotoRegular,
     textAlign: "left",
     fontSize: FontSize.size_xs,
@@ -151,7 +348,7 @@ const styles = StyleSheet.create({
   },
   walletBalance5000: {
     top: 230,
-    left: 158,
+    left: 130,
     color: Color.colorBlack,
     textAlign: "left",
     fontFamily: FontFamily.robotoBold,
@@ -191,18 +388,38 @@ const styles = StyleSheet.create({
     left: 91,
     color: Color.colorDarkgray,
     fontFamily: FontFamily.robotoRegular,
+    backgroundColor: Color.colorGainsboro_100,
+    borderRadius: Border.br_6xs,
+    elevation: 60,
+    width: '50%',
+    paddingLeft: 15
   },
   quantity: {
     top: 471,
     left: 91,
     color: Color.colorDarkgray,
-    fontFamily: FontFamily.robotoRegular,
+    backgroundColor: Color.colorGainsboro_100,
+    borderRadius: Border.br_6xs,
+    elevation: 60,
+    width: '50%',
+    paddingLeft: 15
   },
   selectAmount: {
     top: 413,
     left: 91,
-    color: Color.colorDarkgray,
+    color: Color.colorBlack,
     fontFamily: FontFamily.robotoRegular,
+    backgroundColor: Color.colorGainsboro_100,
+    borderRadius: Border.br_6xs,
+    elevation: 60,
+    width: '50%',
+    paddingLeft: 15
+  },
+  nameDisplay:
+  {
+    top: 440,
+    left: 91,
+    color: Color.colorBlack,
   },
   slideChild: {
     top: "0%",
@@ -239,9 +456,19 @@ const styles = StyleSheet.create({
   },
   slide: {
     marginLeft: -57,
-    top: 592,
+    top: 590,
     width: 115,
     height: 39,
+    left: "50%",
+    position: "absolute",
+  },
+  buyButton: {
+    backgroundColor: Color.colorDarkcyan_100,
+    borderRadius: 20,
+    padding: 10,
+    width: 100,
+    textAlign: 'center',
+    color: 'white',
   },
   groupChild: {
     borderRadius: Border.br_xs,
@@ -263,7 +490,7 @@ const styles = StyleSheet.create({
   },
   rectangleParent: {
     top: 260,
-    left: 65,
+    left: 30,
     height: 65,
     width: 300,
     position: "absolute",
@@ -302,7 +529,7 @@ const styles = StyleSheet.create({
   },
   rectangleIcon: {
     top: 88,
-    left: 154,
+    left: 120,
     borderRadius: Border.br_lgi,
     width: 112,
     height: 126,
@@ -310,7 +537,7 @@ const styles = StyleSheet.create({
   },
   withdrawal: {
     top: 186,
-    left: 181,
+    left: 150,
     fontSize: FontSize.size_xs,
     color: Color.colorWhite,
   },
@@ -320,11 +547,21 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   mingcutebackFill: {
-    left: 372,
+    left: 30,
     top: 43,
     width: 24,
     height: 24,
     position: "absolute",
+  },
+  pickerContainer: {
+   
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  picker: {
+    width: "60%", // Adjust the width as needed
+    top: 350,
+    elevation: 80,
   },
   payBill: {
     flex: 1,

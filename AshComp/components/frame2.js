@@ -4,15 +4,15 @@ import { Image } from "expo-image";
 import { Color, FontFamily, FontSize, Border } from "../GlobalStyles";
 import { Linking } from 'react-native';
 
-const Frame1 = () => {
+const Frame2 = () => {
   const [visible, setVisible] = React.useState(true);
 
   const handleWhatsApp = () => {
-    Linking.openURL(`whatsapp://send?text=Hello&phone=+2349066440069`);
+    Linking.openURL(`whatsapp://send?text=Hello&phone=+2347015779491`);
   };
 
   const handleEmail = () => {
-    Linking.openURL('mailto:worknorm99@gmail.com?subject=Complaint&body=Hello%20there');
+    Linking.openURL('mailto:worknorm99@gmail.com?subject=Complaint&body=Hi%20there');
   };
 
   const handleClose = () => {
@@ -184,4 +184,4 @@ const styles = StyleSheet.create({
   }
 });
 
-export default Frame1;
+export default Frame2;

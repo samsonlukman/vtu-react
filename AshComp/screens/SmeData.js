@@ -8,38 +8,48 @@ import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
 import { useUser } from "../contexts/UserContext";
 
-const BuyData = () => {
+const BuySmeData = () => {
+  const navigation = useNavigation();
   const [network, setNetwork] = useState("");
   const [productCode, setProductCode] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [productCodeOptions, setProductCodeOptions] = useState({});
-  const [copiedText, setCopiedText] = React.useState('');
   const { userData, loading, wallet } = useUser();
-
-
-  React.useEffect(() => {
-    // Fetch data plans when component mounts
-    axios.get("http://192.168.43.179:8000/api/sme-plans/")
-      .then(response => {
-        const data = response.data;
-        setProductCodeOptions({
-          "mtn": data.mtn.mtn_data,
-          "airtel": data.airtel.airtel_data,
-          "glo": data.glo.glo_data,
-          "nineMobile": data.nineMobile.nineMobile_data,
-        });
-      })
-      .catch(error => {
-        console.error('Error fetching data plans:', error);
-      });
-  }, []);
-
-
+  
   const handleCopyToClipboard = async () => {
     await Clipboard.setStringAsync(phoneNumber);
     alert('Copied to clipboard!');
   };
+
+  const handlePhoneNumberChange = (value) => {
+    setPhoneNumber(value);
+  };
+  const [productCodeOptions, setProductCodeOptions] = useState({
+    "mtn_sme": [
+      { service_name: "500MB", service_default_price: 100 },
+      { service_name: "1GB", service_default_price: 100 },
+      { service_name: "2GB", service_default_price: 500 },
+      { service_name: "5GB", service_default_price: 1000 }
+    ],
+    "airtel_sme": [
+      { service_name: "500MB", service_default_price: 50 },
+      { service_name: "1GB", service_default_price: 300 },
+      { service_name: "2GB", service_default_price: 500 },
+      { service_name: "5GB", service_default_price: 1000 }
+    ],
+    "glo_sme": [
+      { service_name: "500MB", service_default_price: 50 },
+      { service_name: "1GB", service_default_price: 300 },
+      { service_name: "2GB", service_default_price: 500 },
+      { service_name: "5GB", service_default_price: 1000 }
+    ],
+    "nineMobile_sme": [
+      { service_name: "500MB", service_default_price: 50 },
+      { service_name: "1GB", service_default_price: 300 },
+      { service_name: "2GB", service_default_price: 500 },
+      { service_name: "5GB", service_default_price: 1000 }
+    ]
+  });
 
   const handleNetworkSelection = (selectedNetwork) => {
     setNetwork(selectedNetwork);
@@ -51,84 +61,70 @@ const BuyData = () => {
     setProductCode(selectedProductCode);
   };
 
-  const handlePhoneNumberChange = (value) => {
-    setPhoneNumber(value);
-  };
-
+  
   const handleBuySmeData = async () => {
     if (phoneNumber.length !== 11) {
-        Alert.alert("Phone number must be 11 digits");
-        return;
+      Alert.alert("Phone number must be 11 digits");
+      return;
     }
 
     setIsLoading(true);
 
     try {
-        // Prepare data for Flutterwave transfer request
-        const flutterwaveUrl = 'https://api.flutterwave.com/v3/transfers';
-        const secret_key = 'FLWSECK-fab12578d0fa352253f89fd6a7b7b713-18f55ce05d4vt-X';
-        const selectedProduct = productCodeOptions[network].find(option => option.service_name === productCode);
-        console.log(selectedProduct)
+      const selectedProduct = productCodeOptions[network].find(option => option.service_name === productCode);
 
-        const flutterwaveParams = {
-            account_bank: '035',
-            account_number: '8548105217',
-            amount: parseInt(selectedProduct.service_default_price) + 50, 
-            currency: 'NGN',
-            narration: `data recharge for`,
-            debit_subaccount: `${userData.account_reference}`
-            
+      const flutterwaveParams = {
+        account_bank: '035',
+        account_number: '8548105217',
+        amount: parseInt(selectedProduct.service_default_price), 
+        currency: 'NGN',
+        narration: `data recharge for`,
+        debit_subaccount: `${userData.account_reference}`
+      };
+      console.log(flutterwaveParams)
+      const flutterwaveHeaders = {
+        'Authorization': `Bearer FLWSECK-fab12578d0fa352253f89fd6a7b7b713-18f55ce05d4vt-X`,
+        'Content-Type': 'application/json'
+      };
+
+      const transferResponse = await axios.post('https://api.flutterwave.com/v3/transfers', flutterwaveParams, {
+        headers: flutterwaveHeaders
+      });
+
+      if (transferResponse.data.status === 'success' && transferResponse.data.message === 'Transfer Queued Successfully') {
+        console.log("Feedback: ", transferResponse.data.message);
+
+        const csrfResponse = await axios.get('http://192.168.43.179:8000/api/get-csrf-token/');
+        const csrfToken = csrfResponse.data.csrf_token;
+
+        const requestBody = {
+          network: `${network}`,
+          phone_number: phoneNumber,
+          product_code: productCode
         };
-        
-        const flutterwaveHeaders = {
-            'Authorization': `Bearer ${secret_key}`,
-            'Content-Type': 'application/json'
-        };
 
-        // Make API request to Flutterwave using Axios
-        const transferResponse = await axios.post(flutterwaveUrl, flutterwaveParams, {
-            headers: flutterwaveHeaders
-        });
+        console.log('Data sent to backend:', requestBody);
 
-        if (transferResponse.data.status === 'success' && transferResponse.data.message === 'Transfer Queued Successfully') {
-            console.log("Feedback: ", transferResponse.data.message);
-
-            // Fetch CSRF token
-            const csrfResponse = await axios.get('http://192.168.43.179:8000/api/get-csrf-token/');
-            const csrfToken = csrfResponse.data.csrf_token;
-
-            // Prepare data for VTU API request
-            const requestBody = {
-                product_code: productCode,
-                number: phoneNumber
-            };
-
-            // Send POST request to backend API with CSRF token included in headers
-            const vtuResponse = await axios.post('http://192.168.43.179:8000/api/buy-sme-data/', requestBody, {
+        const vtuResponse = await axios.post('http://192.168.43.179:8000/api/data-api/', requestBody, {
                 headers: {
                     'X-CSRFToken': csrfToken,
                     'Content-Type': 'application/json' // Ensure you set the correct content type
                 }
             });
 
-            console.log('Data sent to backend:', requestBody);
-            console.log('Response from backend:', vtuResponse.data);
-            Alert.alert(vtuResponse.data.message);
-        } else {
-            Alert.alert("Error", transferResponse.data.message);
-        }
+        
+        console.log('Response from backend:', vtuResponse.data);
+        Alert.alert(vtuResponse.data.reasons);
+      } else {
+        Alert.alert("Error", transferResponse.data.message);
+      }
     } catch (error) {
-        console.error('Error:', error);
-        // Handle error
-        Alert.alert(
-          "Error: Try another plan"
-      );
-      
-      
+      console.error('Error:', error);
+      Alert.alert("Error: Try another plan");
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
-};
+  };
 
   
   
@@ -154,24 +150,24 @@ const BuyData = () => {
           onValueChange={(itemValue) => handleNetworkSelection(itemValue)}
         >
           <Picker.Item label="Select Network" value="" />
-          <Picker.Item label="Glo" value="glo" />
-          <Picker.Item label="Airtel" value="airtel" />
-          <Picker.Item label="MTN" value="mtn" />
-          <Picker.Item label="9mobile" value="nineMobile" />
+          <Picker.Item label="Glo" value="glo_sme" />
+          <Picker.Item label="Airtel" value="airtel_sme" />
+          <Picker.Item label="MTN" value="mtn_sme" />
+          <Picker.Item label="9mobile" value="nineMobile_sme" />
         </Picker>
       
-        {/* Product Code Selection */}
-        {network && (
-          <Picker style={styles.dataPlans}
-            selectedValue={productCode}
-            onValueChange={(itemValue) => handleProductCodeSelection(itemValue)}
-          >
-            <Picker.Item label="Select Package" value="" />
-            {productCodeOptions[network].map((option, index) => (
-                <Picker.Item key={index} label={`${option.service_name} ${parseInt(option.service_default_price) + 50}`} value={option.service_name} />
-            ))}
-          </Picker>
-        )}
+        {network && productCodeOptions[network] && (
+  <Picker style={styles.dataPlans}
+    selectedValue={productCode}
+    onValueChange={(itemValue) => handleProductCodeSelection(itemValue)}
+  >
+    <Picker.Item label="Select Package" value="" />
+    {productCodeOptions[network].map((option, index) => (
+        <Picker.Item key={index} label={`${option.service_name} ${parseInt(option.service_default_price) + 50}`} value={option.service_name} />
+    ))}
+  </Picker>
+)}
+
       
      
       <View>
@@ -195,13 +191,13 @@ const BuyData = () => {
   <View style={[styles.groupChild5, styles.groupChildLayout2]} />
   <View style={[styles.groupChild6, styles.groupChildLayout2]} />
   
-  <Pressable onPress={() => handleNetworkSelection("glo")}>
+  <Pressable onPress={() => handleNetworkSelection("glo_sme")}>
     <Text style={[styles.glo, styles.buyTypo]}>glo</Text>
   </Pressable>
   
   <View style={[styles.groupChild7, styles.groupChildLayout1]} />
   
-  <Pressable onPress={() => handleNetworkSelection("airtel")}>
+  <Pressable onPress={() => handleNetworkSelection("airtel_sme")}>
     <Image
       style={styles.rectangleIcon}
       contentFit="cover"
@@ -211,7 +207,7 @@ const BuyData = () => {
 
   <View style={[styles.groupChild8, styles.groupChildLayout1]} />
 
-  <Pressable onPress={() => handleNetworkSelection("mtn")}>
+  <Pressable onPress={() => handleNetworkSelection("mtn_sme")}>
     <Image
       style={[styles.groupChild9, styles.groupChildLayout]}
       contentFit="cover"
@@ -219,7 +215,7 @@ const BuyData = () => {
     />
   </Pressable>
   
-  <Pressable onPress={() => handleNetworkSelection("nineMobile")}>
+  <Pressable onPress={() => handleNetworkSelection("nineMobile_sme")}>
     <Image
       style={[styles.groupChild10, styles.groupChildLayout]}
       contentFit="cover"
@@ -664,4 +660,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default BuyData;
+export default BuySmeData;

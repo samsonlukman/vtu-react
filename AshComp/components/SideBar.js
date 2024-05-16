@@ -36,14 +36,20 @@ const SideBar = ({ onClose }) => {
         <Pressable style={styles.closeSidebar} onPress={onClose}>
           <Text style={styles.closeSidebarText}>Close Sidebar</Text>
         </Pressable>
+          {/* 
         <Pressable
           style={[styles.beneficiary, styles.logoutPosition]}
           onPress={() => navigation.navigate("Beneficiary")}
         >
-          <Text style={styles.logoutTypo}>Beneficiary</Text>
+          <Text style={styles.logoutTypo}>History</Text>
         </Pressable>
-        <Text style={[styles.register, styles.logoutTypo]}>Register</Text>
-        <Text style={[styles.connectUs, styles.logoutTypo]}>Connect Us</Text>
+           */}
+         <Pressable
+          style={[styles.connectWith, styles.logoutPosition]}
+          onPress={openLogComplainText}
+        >
+          <Text style={styles.logoutTypo}>Connect Us</Text>
+        </Pressable>
         <Pressable
           style={[styles.aboutUs, styles.logoutPosition]}
           onPress={() => navigation.navigate("About")}
@@ -145,7 +151,7 @@ const styles = StyleSheet.create({
     position: "absolute",
   },
   connectUs: {
-    top: 209,
+    top: 130,
     left: 46,
     position: "absolute",
   },
@@ -166,13 +172,13 @@ const styles = StyleSheet.create({
     top: 0,
   },
   logComplain: {
-    top: 254,
+    top: 170,
   },
   settings: {
-    top: 299,
+    top: 210,
   },
   logout: {
-    top: 344,
+    top: 250,
     left: 46,
     position: "absolute",
   },
@@ -183,6 +189,9 @@ const styles = StyleSheet.create({
     maxHeight: "100%",
     height: 932,
   },
+  connectWith: {
+    top: 130
+  }
 });
 
 export default SideBar;

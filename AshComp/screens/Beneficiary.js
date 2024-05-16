@@ -1,58 +1,73 @@
 import * as React from "react";
+import { useState, useEffect } from "react";
 import { Image } from "expo-image";
-import { StyleSheet, Pressable, Text, View } from "react-native";
+import { StyleSheet, Pressable, Text, View, ActivityIndicator, ScrollView } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Color, FontSize, FontFamily } from "../GlobalStyles";
+import { useUser } from "../contexts/UserContext";
 
 const Beneficiary = () => {
   const navigation = useNavigation();
+  const { userData, loading, wallet } = useUser();
+  const [transactionLog, setTransactionLog] = useState(null);
+  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!userData || !userData.account_reference) {
+      setError("Account reference not found");
+      return;
+    }
+
+    const fetchTransactions = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch(`https://api.flutterwave.com/v3/payout-subaccounts/${userData.account_reference}/transactions`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer FLWSECK-fab12578d0fa352253f89fd6a7b7b713-18f55ce05d4vt-X` // Replace with your actual secret key
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+
+        const data = await response.json();
+        setTransactionLog(data);
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, [userData]);
+
+  if (isLoading || loading) {
+    return <ActivityIndicator size="large" color="#0000ff" />;
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+      </View>
+    );
+  }
 
   return (
+    <ScrollView>
     <View style={[styles.beneficiary, styles.iconLayout]}>
-      <Image
-        style={[
-          styles.bytesizetelephoneIcon,
-          styles.bytesizetelephoneIconLayout,
-        ]}
-        contentFit="cover"
-        source={require("../assets/bytesizetelephone.png")}
-      />
-      <Image
-        style={[
-          styles.bytesizetelephoneIcon1,
-          styles.bytesizetelephoneIconLayout,
-        ]}
-        contentFit="cover"
-        source={require("../assets/bytesizetelephone1.png")}
-      />
-      <Image
-        style={[
-          styles.bytesizetelephoneIcon2,
-          styles.bytesizetelephoneIconLayout,
-        ]}
-        contentFit="cover"
-        source={require("../assets/bytesizetelephone1.png")}
-      />
+     
       <Image
         style={[styles.icoutlineGasMeterIcon, styles.icoutlineIconLayout]}
         contentFit="cover"
         source={require("../assets/icoutlinegasmeter.png")}
       />
-      <Image
-        style={[styles.icoutlineGasMeterIcon1, styles.icoutlineIconLayout]}
-        contentFit="cover"
-        source={require("../assets/icoutlinegasmeter1.png")}
-      />
-      <Image
-        style={[styles.icoutlineGasMeterIcon2, styles.icoutlineIconLayout]}
-        contentFit="cover"
-        source={require("../assets/icoutlinegasmeter1.png")}
-      />
-      <Image
-        style={styles.icroundSearchIcon}
-        contentFit="cover"
-        source={require("../assets/icroundsearch.png")}
-      />
+      
       <Pressable
         style={[styles.mingcutebackFill, styles.fillIconPosition]}
         onPress={() => navigation.goBack()}
@@ -64,48 +79,15 @@ const Beneficiary = () => {
         />
       </Pressable>
       <Text style={[styles.beneficiaries, styles.filterTypo]}>
-        Beneficiaries
+        Transactions
       </Text>
-      <Text style={[styles.filter, styles.filterTypo]}>Filter</Text>
+     
       <Text style={[styles.cityGateStoreContainer, styles.mumContainerTypo]}>
-        <Text style={styles.cityGateStore}>{`City Gate store
-`}</Text>
+        <Text style={styles.cityGateStore}>{JSON.stringify(transactionLog)}</Text>
         <Text style={styles.text}>2761562772188</Text>
       </Text>
-      <Text
-        style={[
-          styles.homeStore2761562772188Container,
-          styles.mumContainerTypo,
-        ]}
-      >
-        <Text style={styles.cityGateStore}>{`Home store
-`}</Text>
-        <Text style={styles.text}>2761562772188</Text>
-      </Text>
-      <Text
-        style={[styles.cityGateStoreContainer1, styles.titilayo08174231616Typo]}
-      >
-        <Text style={styles.cityGateStore}>{`City Gate store
-`}</Text>
-        <Text style={styles.text}>2761562772188</Text>
-      </Text>
-      <Text style={[styles.mum08174231616, styles.mumContainerTypo]}>
-        <Text style={styles.cityGateStore}>{`Mum
-`}</Text>
-        <Text style={styles.text}>08174231616</Text>
-      </Text>
-      <Text style={[styles.mum081742316161, styles.mumContainerTypo]}>
-        <Text style={styles.cityGateStore}>{`Mum
-`}</Text>
-        <Text style={styles.text}>08174231616</Text>
-      </Text>
-      <Text
-        style={[styles.titilayo08174231616, styles.titilayo08174231616Typo]}
-      >
-        <Text style={styles.cityGateStore}>{`Titilayo
-`}</Text>
-        <Text style={styles.text}>08174231616</Text>
-      </Text>
+      
+     
       <Image
         style={[styles.mingcutedelete2FillIcon, styles.fillIconPosition]}
         contentFit="cover"
@@ -137,6 +119,8 @@ const Beneficiary = () => {
         source={require("../assets/mingcutedelete2fill.png")}
       />
     </View>
+    
+    </ScrollView>
   );
 };
 

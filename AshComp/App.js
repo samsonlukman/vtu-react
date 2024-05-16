@@ -8,7 +8,7 @@ import BuyAirtime from "./screens/BuyAirtime";
 import BuyData from "./screens/BuyData";
 import PayBill from "./screens/PayBill";
 import Cable from "./screens/Cable";
-import PayBill1 from "./screens/PayBill1";
+import BuySmeData from "./screens/SmeData";
 import PayBill2 from "./screens/PayBill2";
 import About from "./screens/About";
 import Setting from "./screens/Setting";
@@ -30,6 +30,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { View, Text, Pressable, TouchableOpacity } from "react-native";
 import LoginScreen from "./screens/LoginScreen";
 import UserRegistrationForm from "./screens/UserRegistrationForm";
+import { UserProvider } from "./contexts/UserContext";
 
 const App = () => {
   const [hideSplashScreen, setHideSplashScreen] = React.useState(true);
@@ -47,6 +48,7 @@ const App = () => {
   return (
     <>
       <NavigationContainer>
+        <UserProvider>
       <AuthProvider>
         {hideSplashScreen ? (
           <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -81,8 +83,8 @@ const App = () => {
               options={{ headerShown: false }}
             />
             <Stack.Screen
-              name="PayBill1"
-              component={PayBill1}
+              name="BuySmeData"
+              component={BuySmeData}
               options={{ headerShown: false }}
             />
             <Stack.Screen
@@ -128,6 +130,7 @@ const App = () => {
           </Stack.Navigator>
         ) : null}
         </AuthProvider>
+        </UserProvider>
       </NavigationContainer>
     </>
   );
