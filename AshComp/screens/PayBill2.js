@@ -6,6 +6,9 @@ import { useNavigation } from "@react-navigation/native";
 import { Color, FontFamily, FontSize, Border } from "../GlobalStyles";
 import { useUser } from "../contexts/UserContext";
 import axios from "axios";
+import { useNotification } from "../contexts/NotificationContext";// Import the sendPushNotification function
+import { sendPushNotification } from "../components/NotificationHandler";
+import { useAuth } from "../contexts/AuthContext";
 
 
 const PayBill2 = () => {
@@ -18,10 +21,11 @@ const PayBill2 = () => {
   const [banks, setBanks] = React.useState([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [accountName, setAccountName] = React.useState("");
+  const { user } = useAuth();
   const toTitleCase = (str) => {
     return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
-  
+  const expoPushToken = useNotification();
 
   React.useEffect(() => {
     // Fetch bank data from API
@@ -149,6 +153,11 @@ const PayBill2 = () => {
         'Authorization': `Bearer ${secret_key}`,
         'Content-Type': 'application/json'
       };
+
+      const historyParams = {
+        user: userData.id,
+        text:   `Bank Transfer: ${amount} to ${accountName}: ${accountNumber}`
+      }
   
       // Make API request to Flutterwave using Axios
       const transferResponse = await axios.post(flutterwaveUrl, flutterwaveParams, {
@@ -159,15 +168,32 @@ const PayBill2 = () => {
         transferResponse.data.status === 'success' &&
         transferResponse.data.message === 'Transfer Queued Successfully'
       ) {
+
+        const csrfResponse = await axios.get('http://192.168.43.179:8000/api/get-csrf-token/');
+        const csrfToken = csrfResponse.data.csrf_token;
+        
         console.log("Feedback: ", transferResponse.data.message);
         Alert.alert(`Transfer Successful`)
-        
+        await sendPushNotification(
+          expoPushToken, // Use the token obtained from the context
+          'Transfer Successful',
+          `You have sent NGN${amount} to ${accountNumber} ${accountName}`,
+          { amount: amount, accountNumber: accountNumber }
+        );
+
+        await axios.post('http://192.168.43.179:8000/api/history/', historyParams, {
+              headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json' // Ensure you set the correct content type
+            }
+          });
+
+          navigation.navigate("Home")
       }
 
     } catch (error) {
       console.error('Error:', error);
       Alert.alert("Error: Something went wrong");
-      navigation.navigate("Home")
     } finally {
       setIsLoading(false); // Set isLoading back to false after API call completion
     }
@@ -233,7 +259,7 @@ const PayBill2 = () => {
     <ActivityIndicator size="large" color="#0000ff" />
 ) : (
   <Pressable onPress={handleTransfer}>
-  <Text style={[ styles.buyTypo, styles.buyButton]}>Buy</Text>
+  <Text style={[ styles.buyTypo, styles.buyButton]}>Send</Text>
 </Pressable>
 )}
 
@@ -247,8 +273,8 @@ const PayBill2 = () => {
       <View style={styles.rectangleParent}>
         <View style={[styles.groupChild, styles.groupPosition]} />
         <View style={[styles.groupItem, styles.groupPosition]} />
-        <Text style={[styles.atm, styles.atmTypo]}>ATM</Text>
-        <Text style={[styles.wallet, styles.atmTypo]}>WALLET</Text>
+        <Text style={[styles.atm, styles.atmTypo]}>P A Y V I L L E</Text>
+        <Text style={[styles.wallet, styles.atmTypo]}>W I T H D R A W</Text>
       </View>
       <View style={[styles.network, styles.payPosition]}>
         <View style={[styles.selectNetworkParent, styles.payLayout]}>
@@ -268,7 +294,13 @@ const PayBill2 = () => {
         source={require("../assets/rectangle-16.png")}
       />
       <Text style={[styles.withdrawal, styles.buyTypo]}>Withdrawal</Text>
-      <Text style={styles.walletBalance5000}>Wallet Balance: ₦{wallet} </Text>
+      {user && user.isAuthenticated ? (
+  <Text style={styles.walletBalance5000}>
+    {userData && userData.account_number ? `Wallet Balance: ₦${wallet}` : '***'}
+  </Text>
+) : (
+  <Text style={styles.walletBalance5000}>Wallet Balance: Login to see balance</Text>
+)}
       <Pressable
         style={styles.mingcutebackFill}
         onPress={() => navigation.goBack()}
@@ -486,7 +518,7 @@ const styles = StyleSheet.create({
     left: 25,
   },
   wallet: {
-    left: 234,
+    left: 180,
   },
   rectangleParent: {
     top: 260,

@@ -7,7 +7,9 @@ import { Color, FontFamily, FontSize, Border } from "../GlobalStyles";
 import axios from "axios";
 import * as Clipboard from 'expo-clipboard';
 import { useUser } from "../contexts/UserContext";
-
+import { useNotification } from "../contexts/NotificationContext";// Import the sendPushNotification function
+import { sendPushNotification } from "../components/NotificationHandler";
+import { useAuth } from "../contexts/AuthContext";
 
 const Cable = () => {
   const navigation = useNavigation();
@@ -18,8 +20,27 @@ const Cable = () => {
   const [amount, setAmount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [Number, setNumber] = useState("");
+  const [loadingMessage, setLoadingMessage] = useState('');
+  const [paymentChoice, setPaymentChoice] = useState("");
   const [selectedProductCode, setSelectedProductCode] = useState("");
   const { userData, loading, wallet } = useUser();
+  const expoPushToken = useNotification();
+  const { user } = useAuth();
+  const [csrfToken, setCsrfToken] = useState("");
+
+   // Fetch CSRF token when component mounts
+   useEffect(() => {
+    const fetchCsrfToken = async () => {
+      try {
+        const csrfResponse = await axios.get('http://192.168.43.179:8000/api/get-csrf-token/');
+        setCsrfToken(csrfResponse.data.csrf_token);
+      } catch (error) {
+        console.error('Error fetching CSRF token:', error.message);
+      }
+    };
+
+    fetchCsrfToken();
+  }, []);
 
   useEffect(() => {
     fetchDistributionCompanies();
@@ -43,6 +64,11 @@ const Cable = () => {
       setSelectedProductCode(selectedPackageData.product_code);
       setAmount(selectedPackageData.price); // Update the amount here
     }
+  };
+
+  const handlePaymentChoice = (choice) => {
+    setPaymentChoice(choice);
+    console.log(choice);
   };
 
   const handleCopyToClipboard = async () => {
@@ -99,6 +125,11 @@ const Cable = () => {
         number: Number,
         
       };
+
+      const historyParams = {
+        user: userData.id,
+        text:   `TV Subscription: ${selectedProductCode} for ${Number}`
+      }
   
         console.log('Data sent to backend:', requestBody);
   
@@ -113,6 +144,19 @@ const Cable = () => {
             console.log('Response from backend:', response.data);
             // Handle response from backend if needed
             Alert.alert("Success");
+            sendPushNotification(
+              expoPushToken, // Use the token obtained from the context
+              'Successful Subscription',
+              `You have successfully purchased ${selectedProductCode} subscription for ${Number}`,
+              { product_code: selectedProductCode,  number: Number }
+            );
+
+            axios.post('http://192.168.43.179:8000/api/history/', historyParams, {
+              headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json' // Ensure you set the correct content type
+            }
+          });
             navigation.navigate("Home")
           })
           .catch(error => {
@@ -130,6 +174,161 @@ const Cable = () => {
     }
   };
 
+  const handleCardUssdPayBill = async () => {
+    if (!selectedProductCode || !Number) {
+        Alert.alert("Input all fields");
+        return;
+    }
+
+    setIsLoading(true);
+
+    try {
+        // Prepare data for Flutterwave payment request
+        const flutterwaveUrl = 'https://api.flutterwave.com/v3/payments';
+        const secret_key = 'FLWSECK-fab12578d0fa352253f89fd6a7b7b713-18f55ce05d4vt-X';
+
+        function generateRandomString(length) {
+            let result = '';
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            const charactersLength = characters.length;
+            for (let i = 0; i < length; i++) {
+                result += characters.charAt(Math.floor(Math.random() * charactersLength));
+            }
+            return result;
+        }
+
+        const tx_ref = `payville-bill-${generateRandomString(25)}`;
+        const flutterwaveParams = {
+            tx_ref: tx_ref,
+            amount: amount,
+            currency: 'NGN',
+            redirect_url: 'https://9b60-105-113-18-64.ngrok-free.app/api/index/',
+            customer: {
+                email: userData.email || 'anonymous@gmail.com',
+                phonenumber: '08080808080',
+                name: userData.username || 'anonymous user',
+            },
+            customizations: {
+                title: 'Bill Payment',
+                description: `Subscription for ${selectedProductCode}, Smart Card Number: ${Number}`,
+            },
+        };
+
+        const flutterwaveHeaders = {
+            'Authorization': `Bearer ${secret_key}`,
+            'Content-Type': 'application/json'
+        };
+
+        // Make API request to Flutterwave using Axios
+        const paymentResponse = await axios.post(flutterwaveUrl, flutterwaveParams, {
+            headers: flutterwaveHeaders
+        });
+
+        if (paymentResponse.data.status === 'success') {
+            const paymentLink = paymentResponse.data.data.link;
+            Clipboard.setString(paymentLink);
+            Alert.alert('Payment Link copied to your clipboard.',
+             'Timeout in 180 seconds. We will keep checking for the payment every 45 seconds. Do not leave the page until transaction is succesfful or timeout');
+
+            let retryCount = 0;
+            const maxRetries = 4; // Total of 2 minutes (4 retries with 30 seconds interval)
+            const interval = 45000; // 30 seconds interval
+
+            const intervalId = setInterval(async () => {
+                retryCount++;
+                try {
+                    // Fetch transaction details from your backend
+                    const transactionResponse = await axios.get('http://192.168.43.179:8000/api/transactions/', {
+                        headers: {
+                            'X-CSRFToken': csrfToken,
+                        }
+                    });
+
+                    const transaction = transactionResponse.data.find(tx => tx.tx_ref === tx_ref);
+                    if (!transaction) {
+                        throw new Error('Transaction not found');
+                    }
+
+                    // Verify the payment using Flutterwave API
+                    const verifyUrl = `https://api.flutterwave.com/v3/transactions/${transaction.transaction_id}/verify`;
+                    const verifyResponse = await axios.get(verifyUrl, {
+                        headers: {
+                            'Authorization': `Bearer ${secret_key}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (verifyResponse.data.status === 'success' && verifyResponse.data.data.status === 'successful') {
+                        clearInterval(intervalId);
+
+                        // Fetch CSRF token
+                        const csrfResponse = await axios.get('http://192.168.43.179:8000/api/get-csrf-token/');
+                        const csrfToken = csrfResponse.data.csrf_token;
+
+                        // Prepare data for VTU API request
+                        const requestBody = {
+                            product_code: selectedProductCode,
+                            number: Number,
+                        };
+
+                        const historyParams = {
+                            user: userData.id,
+                            text: `TV Subscription: ${selectedProductCode} for ${Number}`
+                        }
+
+                        // Send POST request to backend API with CSRF token included in headers
+                        const vtuResponse = await axios.post('http://192.168.43.179:8000/api/buy-tv/', requestBody, {
+                            headers: {
+                                'X-CSRFToken': csrfToken,
+                                'Content-Type': 'application/json' // Ensure you set the correct content type
+                            }
+                        });
+
+                        if (vtuResponse.data.success === true) {
+                            console.log('Data sent to backend:', requestBody);
+                            console.log('Response from backend:', vtuResponse.data);
+                            Alert.alert(vtuResponse.data.message);
+                            await sendPushNotification(
+                                expoPushToken, // Use the token obtained from the context
+                                'Successful Subscription',
+                                `You have successfully purchased ${selectedProductCode} subscription for ${Number}`,
+                                { product_code: selectedProductCode, number: Number }
+                            );
+
+                            await axios.post('http://192.168.43.179:8000/api/history/', historyParams, {
+                                headers: {
+                                    'X-CSRFToken': csrfToken,
+                                    'Content-Type': 'application/json' // Ensure you set the correct content type
+                                }
+                            });
+                            setIsLoading(false); // Stop the loading indicator
+                            navigation.navigate("Home");
+                        }
+                    } else if (retryCount >= maxRetries) {
+                        clearInterval(intervalId);
+                        Alert.alert('Error', 'Payment verification failed after multiple attempts.');
+                        setIsLoading(false); // Stop the loading indicator
+                    }
+                } catch (error) {
+                    console.error('Verification Error:', error.response ? error.response.data : error.message);
+                    if (retryCount >= maxRetries) {
+                        clearInterval(intervalId);
+                        Alert.alert('Verification Error', error.response ? error.response.data.message : error.message);
+                        setIsLoading(false); // Stop the loading indicator
+                    }
+                }
+            }, interval);
+        } else {
+            Alert.alert("Error", paymentResponse.data.message);
+            setIsLoading(false); // Stop the loading indicator
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        // Handle error
+        Alert.alert("Network Error or Try Another Plan");
+        setIsLoading(false); // Stop the loading indicator
+    }
+};
 
 
   return (
@@ -174,32 +373,46 @@ const Cable = () => {
           </Picker>
         </View>
         <View style={styles.slide}>
-          {isLoading ? (
-            <ActivityIndicator size="large" color="#0000ff" />
-          ) : (
-            <Pressable onPress={handlePayBill}>
-              <Text style={[ styles.buyTypo, styles.buyButton]}>Buy</Text>
-            </Pressable>
-          )}
-          <Image
-            style={[styles.teenyiconsarrowSolid, styles.slideItemLayout]}
-            contentFit="cover"
-            source={require("../assets/teenyiconsarrowsolid.png")}
-          />
-        </View>
-        <View style={styles.rectangleParent}>
-          <View style={[styles.groupChild, styles.groupPosition]} />
+  {isLoading ? (
+    <ActivityIndicator size="large" color="#0000ff" />
+  ) : (
+    <Pressable onPress={paymentChoice === 'atm' ? handleCardUssdPayBill : handlePayBill}>
+      <Text style={[styles.buyTypo, styles.buyButton]}>Buy</Text>
+    </Pressable>
+  )}
+  <Image
+    style={[styles.teenyiconsarrowSolid, styles.slideItemLayout]}
+    contentFit="cover"
+    source={require("../assets/teenyiconsarrowsolid.png")}
+  />
+</View>
+<View style={[styles.rectangleParent]}>
+<View style={[styles.groupChild, styles.groupPosition]} />
           <View style={[styles.groupItem, styles.groupPosition]} />
-          <Text style={[styles.atm, styles.atmTypo]}>ATM</Text>
-          <Text style={[styles.wallet, styles.atmTypo]}>WALLET</Text>
-        </View>
+  <Pressable onPress={() => handlePaymentChoice("atm")} style={[styles.atmPressable, styles.atmPosition]}>
+    <Text style={styles.atm}>Card, USSD</Text>
+  </Pressable>
+  <Pressable 
+  onPress={() => user && user.isAuthenticated ? handlePaymentChoice("wallet") : Alert.alert("Login to use wallet")} 
+  style={[styles.walletPressable, styles.atmPosition]}
+>
+  <Text style={styles.wallet}>WALLET</Text>
+</Pressable>
+
+</View>
         <Image
           style={[styles.rectangleIcon, styles.slidePosition]}
           contentFit="cover"
           source={require("../assets/rectangle-9.png")}
         />
         <Text style={[styles.payForCable, styles.buyTypo]}>Pay for Cable</Text>
-        <Text style={styles.walletBalance5000}>Wallet Balance: ₦{wallet} </Text>
+        {user && user.isAuthenticated ? (
+  <Text style={styles.walletBalance5000}>
+    {userData && userData.account_number ? `Wallet Balance: ₦${wallet}` : '***'}
+  </Text>
+) : (
+  <Text style={styles.walletBalance5000}>Wallet Balance: Login to see balance</Text>
+)}
         <Pressable
           style={styles.mingcutebackFill}
           onPress={() => navigation.goBack()}
@@ -409,10 +622,18 @@ const styles = StyleSheet.create({
     width: 150,
   },
   atm: {
-    left: 25,
+    left: 5,
+    bottom: 10,
+    color: Color.colorBlack,
+    fontFamily: FontFamily.robotoBold,
+    fontWeight: "700",
   },
   wallet: {
-    left: 234,
+    left: 35,
+    bottom: 10,
+    color: Color.colorWhite,
+    fontFamily: FontFamily.robotoBold,
+    fontWeight: "700",
   },
   rectangleParent: {
     top: 260,
@@ -420,6 +641,24 @@ const styles = StyleSheet.create({
     height: 65,
     width: 200,
     position: "absolute",
+  },
+  atmPressable: {
+    position: "absolute",
+    left: 20, // Adjust spacing between ATM and WALLET
+    top: 0,
+    width: 100,
+    height: 65,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  walletPressable: {
+    position: "absolute",
+    left: 140, // Adjust spacing between ATM and WALLET
+    top: 0,
+    width: 100,
+    height: 65,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   rectangleIcon: {
     marginLeft: -56,
@@ -452,6 +691,12 @@ const styles = StyleSheet.create({
     borderRadius: Border.br_6xs,
     width: 279,
     overflow: "hidden",
+  },
+  rectangleContainer: {
+    top: 200,
+    left: 40,
+    width: 300,
+    height: 65,
   },
   dstvWrapper: {
     borderTopLeftRadius: Border.br_6xs,

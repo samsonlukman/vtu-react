@@ -1,21 +1,45 @@
 import * as React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { StyleSheet, View, Text, Pressable, ScrollView, TextInput, Alert, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { useNavigation } from "@react-navigation/native";
 import { Color, FontFamily, FontSize, Border } from "../GlobalStyles";
 import { Picker } from "@react-native-picker/picker";
+import * as Clipboard from 'expo-clipboard';
 import axios from "axios";
 import { useUser } from "../contexts/UserContext";
+import { useNotification } from "../contexts/NotificationContext";// Import the sendPushNotification function
+import { sendPushNotification } from "../components/NotificationHandler";
+import { useAuth } from "../contexts/AuthContext";
 
 const BuyData = () => {
+  const navigation = useNavigation();
   const [network, setNetwork] = useState("");
   const [productCode, setProductCode] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
+  const [paymentChoice, setPaymentChoice] = useState("");
   const [productCodeOptions, setProductCodeOptions] = useState({});
   const [copiedText, setCopiedText] = React.useState('');
   const { userData, loading, wallet } = useUser();
+  const expoPushToken = useNotification();
+  const { user } = useAuth();
+  const [csrfToken, setCsrfToken] = useState("");
+
+   // Fetch CSRF token when component mounts
+   useEffect(() => {
+    const fetchCsrfToken = async () => {
+      try {
+        const csrfResponse = await axios.get('http://192.168.43.179:8000/api/get-csrf-token/');
+        setCsrfToken(csrfResponse.data.csrf_token);
+      } catch (error) {
+        console.error('Error fetching CSRF token:', error.message);
+      }
+    };
+
+    fetchCsrfToken();
+  }, []);
 
 
   React.useEffect(() => {
@@ -53,6 +77,11 @@ const BuyData = () => {
 
   const handlePhoneNumberChange = (value) => {
     setPhoneNumber(value);
+  };
+
+  const handlePaymentChoice = (choice) => {
+    setPaymentChoice(choice);
+    console.log(choice);
   };
 
   const handleBuySmeData = async () => {
@@ -103,6 +132,11 @@ const BuyData = () => {
                 number: phoneNumber
             };
 
+            const historyParams = {
+              user: userData.id,
+              text:   `Data purchase: ${productCode} to ${phoneNumber}`
+            }
+
             // Send POST request to backend API with CSRF token included in headers
             const vtuResponse = await axios.post('http://192.168.43.179:8000/api/buy-sme-data/', requestBody, {
                 headers: {
@@ -111,9 +145,27 @@ const BuyData = () => {
                 }
             });
 
+            if (vtuResponse.data.success === true) {
+
             console.log('Data sent to backend:', requestBody);
             console.log('Response from backend:', vtuResponse.data);
             Alert.alert(vtuResponse.data.message);
+            await sendPushNotification(
+              expoPushToken, // Use the token obtained from the context
+              'Data Purchase Successful',
+              `You have successfully purchased ${productCode} worth of data for ${phoneNumber}`,
+              { product_code: productCode,  phoneNumber }
+            );
+
+            await axios.post('http://192.168.43.179:8000/api/history/', historyParams, {
+              headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json' // Ensure you set the correct content type
+            }
+          });
+            navigation.navigate("Home")
+          }
+
         } else {
             Alert.alert("Error", transferResponse.data.message);
         }
@@ -121,7 +173,7 @@ const BuyData = () => {
         console.error('Error:', error);
         // Handle error
         Alert.alert(
-          "Error: Try another plan"
+          "Network Error or Try Another Plan"
       );
       
       
@@ -130,7 +182,166 @@ const BuyData = () => {
     }
 };
 
-  
+
+const handleCardUssdBuySmeData = async () => {
+  if (phoneNumber.length !== 11) {
+      Alert.alert("Phone number must be 11 digits");
+      return;
+  }
+
+  setIsLoading(true);
+
+  try {
+      // Prepare data for Flutterwave payment request
+      const flutterwaveUrl = 'https://api.flutterwave.com/v3/payments';
+      const secret_key = 'FLWSECK-fab12578d0fa352253f89fd6a7b7b713-18f55ce05d4vt-X';
+      const selectedProduct = productCodeOptions[network].find(option => option.service_name === productCode);
+      console.log(selectedProduct);
+
+      function generateRandomString(length) {
+          let result = '';
+          const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+          const charactersLength = characters.length;
+          for (let i = 0; i < length; i++) {
+              result += characters.charAt(Math.floor(Math.random() * charactersLength));
+          }
+          return result;
+      }
+
+      const tx_ref = `payville-data-${generateRandomString(25)}`;
+      const flutterwaveParams = {
+          tx_ref: tx_ref,
+          amount: parseInt(selectedProduct.service_default_price) + 50,
+          currency: 'NGN',
+          redirect_url: 'https://9b60-105-113-18-64.ngrok-free.app/api/index/',
+          customer: {
+              email: userData.email || 'anonymous@gmail.com',
+              phonenumber: phoneNumber,
+              name: userData.username || 'anonymous user',
+          },
+          customizations: {
+              title: 'Data Purchase',
+              description: `Data purchase of ${selectedProduct.service_default_price} NGN for ${phoneNumber}`,
+          },
+      };
+
+      const flutterwaveHeaders = {
+          'Authorization': `Bearer ${secret_key}`,
+          'Content-Type': 'application/json'
+      };
+
+      // Make API request to Flutterwave using Axios
+      const paymentResponse = await axios.post(flutterwaveUrl, flutterwaveParams, {
+          headers: flutterwaveHeaders
+      });
+
+      if (paymentResponse.data.status === 'success') {
+          const paymentLink = paymentResponse.data.data.link;
+          Clipboard.setString(paymentLink);
+          Alert.alert('Payment Link copied to your clipboard.',
+             'Timeout in 180 seconds. We will keep checking for the payment every 45 seconds. Do not leave the page until transaction is succesfful or timeout');
+
+          let retryCount = 0;
+          const maxRetries = 4; // Total of 3 minutes (4 retries with 30 seconds interval)
+          const interval = 45000; // 45 seconds interval
+
+          const intervalId = setInterval(async () => {
+              retryCount++;
+              try {
+                  // Fetch transaction details from your backend
+                  const transactionResponse = await axios.get('http://192.168.43.179:8000/api/transactions/', {
+                      headers: {
+                          'X-CSRFToken': csrfToken,
+                      }
+                  });
+
+                  const transaction = transactionResponse.data.find(tx => tx.tx_ref === tx_ref);
+                  if (!transaction) {
+                      throw new Error('Transaction not found');
+                  }
+
+                  // Verify the payment using Flutterwave API
+                  const verifyUrl = `https://api.flutterwave.com/v3/transactions/${transaction.transaction_id}/verify`;
+                  const verifyResponse = await axios.get(verifyUrl, {
+                      headers: {
+                          'Authorization': `Bearer ${secret_key}`,
+                          'Content-Type': 'application/json'
+                      }
+                  });
+
+                  if (verifyResponse.data.status === 'success' && verifyResponse.data.data.status === 'successful') {
+                      clearInterval(intervalId);
+
+                      // Fetch CSRF token
+                      const csrfResponse = await axios.get('http://192.168.43.179:8000/api/get-csrf-token/');
+                      const csrfToken = csrfResponse.data.csrf_token;
+
+                      // Prepare data for VTU API request
+                      const requestBody = {
+                          product_code: productCode,
+                          number: phoneNumber
+                      };
+
+                      const historyParams = {
+                          user: userData.id,
+                          text: `Data purchase: ${productCode} to ${phoneNumber}`
+                      }
+
+                      // Send POST request to backend API with CSRF token included in headers
+                      const vtuResponse = await axios.post('http://192.168.43.179:8000/api/buy-sme-data/', requestBody, {
+                          headers: {
+                              'X-CSRFToken': csrfToken,
+                              'Content-Type': 'application/json' // Ensure you set the correct content type
+                          }
+                      });
+
+                      if (vtuResponse.data.success === true) {
+                          console.log('Data sent to backend:', requestBody);
+                          console.log('Response from backend:', vtuResponse.data);
+                          Alert.alert(vtuResponse.data.message);
+                          await sendPushNotification(
+                              expoPushToken, // Use the token obtained from the context
+                              'Data Purchase Successful',
+                              `You have successfully purchased ${productCode} worth of data for ${phoneNumber}`,
+                              { product_code: productCode, phoneNumber }
+                          );
+
+                          await axios.post('http://192.168.43.179:8000/api/history/', historyParams, {
+                              headers: {
+                                  'X-CSRFToken': csrfToken,
+                                  'Content-Type': 'application/json' // Ensure you set the correct content type
+                              }
+                          });
+                          setIsLoading(false); // Stop the loading indicator
+                          navigation.navigate("Home");
+                      }
+                  } else if (retryCount >= maxRetries) {
+                      clearInterval(intervalId);
+                      Alert.alert('Error', 'Payment verification failed after multiple attempts.');
+                      setIsLoading(false); // Stop the loading indicator
+                  }
+              } catch (error) {
+                  console.error('Verification Error:', error.response ? error.response.data : error.message);
+                  if (retryCount >= maxRetries) {
+                      clearInterval(intervalId);
+                      Alert.alert('Verification Error', error.response ? error.response.data.message : error.message);
+                      setIsLoading(false); // Stop the loading indicator
+                  }
+              }
+          }, interval);
+      } else {
+          Alert.alert("Error", paymentResponse.data.message);
+          setIsLoading(false); // Stop the loading indicator
+      }
+  } catch (error) {
+      console.error('Error:', error);
+      // Handle error
+      Alert.alert("Network Error or Try Another Plan");
+      setIsLoading(false); // Stop the loading indicator
+  }
+};
+
+
   
   return (
     <ScrollView>
@@ -143,13 +354,19 @@ const BuyData = () => {
         source={require("../assets/rectangle-11.png")}
       />
       <Text style={[styles.buyAirtime1, styles.buyTypo]}>Buy Data</Text>
-      <Text style={styles.walletBalance5000}>Wallet Balance: ₦{wallet} </Text>
+      {user && user.isAuthenticated ? (
+  <Text style={styles.walletBalance5000}>
+    {userData && userData.account_number ? `Wallet Balance: ₦${wallet}` : '***'}
+  </Text>
+) : (
+  <Text style={styles.walletBalance5000}>Wallet Balance: Login to see balance</Text>
+)}
      
       
 
-    
+     <View style={styles.pickerContainer}> 
     {/* Network Selection */}
-      <Picker style={styles.selectPackage}
+      <Picker style={styles.picker}
           selectedValue={network}
           onValueChange={(itemValue) => handleNetworkSelection(itemValue)}
         >
@@ -162,7 +379,7 @@ const BuyData = () => {
       
         {/* Product Code Selection */}
         {network && (
-          <Picker style={styles.dataPlans}
+          <Picker style={styles.picker}
             selectedValue={productCode}
             onValueChange={(itemValue) => handleProductCodeSelection(itemValue)}
           >
@@ -172,7 +389,7 @@ const BuyData = () => {
             ))}
           </Picker>
         )}
-      
+      </View>
      
       <View>
       <Pressable onLongPress={handleCopyToClipboard} style={styles.rectangleView}>
@@ -186,11 +403,19 @@ const BuyData = () => {
       </Pressable>
       </View>
       <View style={[styles.rectangleContainer, styles.groupChildLayout3]}>
-        <View style={[styles.groupChild3, styles.groupChildPosition1]} />
-        <View style={[styles.groupChild4, styles.groupChildPosition]} />
-        <Text style={[styles.atm, styles.atmPosition]}>ATM</Text>
-        <Text style={[styles.wallet, styles.atmPosition]}>WALLET</Text>
-      </View>
+  <View style={[styles.groupChild3, styles.groupChildPosition1]} />
+  <View style={[styles.groupChild4, styles.groupChildPosition]} />
+  <Pressable onPress={() => handlePaymentChoice("atm")} style={[styles.atmPressable, styles.atmPosition]}>
+    <Text style={styles.atm}>Card, USSD</Text>
+  </Pressable>
+  <Pressable 
+  onPress={() => user && user.isAuthenticated ? handlePaymentChoice("wallet") : Alert.alert("Login to use wallet")} 
+  style={[styles.walletPressable, styles.atmPosition]}
+>
+  <Text style={styles.wallet}>WALLET</Text>
+</Pressable>
+
+</View>
       <View style={[styles.groupView, styles.groupChildLayout2]}>
   <View style={[styles.groupChild5, styles.groupChildLayout2]} />
   <View style={[styles.groupChild6, styles.groupChildLayout2]} />
@@ -228,21 +453,20 @@ const BuyData = () => {
   </Pressable>
 </View>  
    
-      <View style={styles.slide}>
-       {isLoading ? (
+<View style={styles.slide}>
+  {isLoading ? (
     <ActivityIndicator size="large" color="#0000ff" />
-) : (
-  <Pressable onPress={handleBuySmeData}>
-  <Text style={[ styles.buyTypo, styles.buyButton]}>Buy</Text>
-</Pressable>
-)}
-
-        <Image
-          style={[styles.teenyiconsarrowSolid, styles.slideItemLayout]}
-          contentFit="cover"
-          source={require("../assets/teenyiconsarrowsolid.png")}
-        />
-      </View>
+  ) : (
+    <Pressable onPress={paymentChoice === 'atm' ? handleCardUssdBuySmeData : handleBuySmeData}>
+      <Text style={[styles.buyTypo, styles.buyButton]}>Buy</Text>
+    </Pressable>
+  )}
+  <Image
+    style={[styles.teenyiconsarrowSolid, styles.slideItemLayout]}
+    contentFit="cover"
+    source={require("../assets/teenyiconsarrowsolid.png")}
+  />
+</View>
       <Pressable
         style={[styles.mingcutebackFill, styles.bxscontactIconLayout]}
         onPress={() => navigation.goBack()}
@@ -309,9 +533,28 @@ const styles = StyleSheet.create({
     width: 24,
     position: "absolute",
   },
+  pickerContainer: {
+   
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  picker: {
+    width: "60%", // Adjust the width as needed
+    top: 350,
+    elevation: 80,
+  },
   groupChildLayout3: {
     height: 65,
     position: "absolute",
+  },
+  atmPressable: {
+    position: "absolute",
+    left: 20, // Adjust spacing between ATM and WALLET
+    top: 0,
+    width: 100,
+    height: 65,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   buyButton: {
     backgroundColor: Color.colorDarkcyan_100,
@@ -475,12 +718,12 @@ const styles = StyleSheet.create({
     position: "absolute",
   },
   rectangleView: {
-    top: 460,
+    top: 350,
     height: 37,
-    width: 279,
+    width: '70%',
     backgroundColor: Color.colorGainsboro_100,
     borderRadius: Border.br_6xs,
-    left: 40,
+    left: '15%',
     elevation: 60
   },
   number: {
@@ -519,16 +762,27 @@ const styles = StyleSheet.create({
     position: "absolute",
   },
   atm: {
-    left: 30,
+    left: 5,
+    bottom: 10,
     color: Color.colorWhite,
     fontFamily: FontFamily.robotoBold,
     fontWeight: "700",
   },
   wallet: {
-    left: 220,
+    left: 35,
+    bottom: 10,
     color: Color.colorWhite,
     fontFamily: FontFamily.robotoBold,
     fontWeight: "700",
+  },
+  walletPressable: {
+    position: "absolute",
+    left: 140, // Adjust spacing between ATM and WALLET
+    top: 0,
+    width: 100,
+    height: 65,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   rectangleContainer: {
     top: 200,
@@ -640,6 +894,9 @@ const styles = StyleSheet.create({
     bottom: "20.26%",
     left: "61.65%",
   },
+  textInput: {
+    left: '10%'
+    },
   slide: {
     marginLeft: -57,
     top: 550,

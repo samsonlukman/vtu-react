@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Image } from "expo-image";
-import { Animated, StyleSheet, Text, View, Pressable, Modal, ScrollView, Button } from "react-native";
+import { Animated, StyleSheet, Text, View, Pressable, Modal, ScrollView, Button, Alert } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import Frame1 from "../components/Frame1";
 import Frame2 from "../components/frame2";
@@ -194,14 +194,14 @@ const Home = () => {
   source={require("../assets/ellipse-2.png")}
 />
 <Text style={[styles.wallet, styles.bonusTypo]}>Wallet</Text>
-<Text style={[styles.bonus, styles.bonusTypo]}>Account Number(WEMA)</Text>
+<Text style={[styles.bonus, styles.bonusTypo]}>Account Number</Text>
 {user && user.isAuthenticated ? (
   <>
     <Text style={[styles.n2460000, styles.historyTypo]}>
       {userData && userData.account_number ? `₦${wallet.toLocaleString()}` : '*** *** ***'}
     </Text>
     <Text style={[styles.n24600001, styles.historyTypo]}>
-      {userData && userData.account_number ? `${userData.account_number}` : '*** *** ***'}
+      {userData && userData.account_number ? `${userData.account_number} (WEMA)` : '*** *** ***'}
     </Text>
   </>
 ) : (
@@ -373,11 +373,31 @@ const Home = () => {
             source={require("../assets/vector1.png")}
           />
         </Pressable>
-        <Image
-          style={[styles.claritynotificationSolidIcon, styles.iconPosition]}
-          contentFit="cover"
-          source={require("../assets/claritynotificationsolid.png")}
-        />
+        
+        {user && user.isAuthenticated ? (
+  <Pressable 
+    onPress={() => navigation.navigate("History")} 
+    style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: 20 }}
+  >
+    <Image
+      style={[styles.claritynotificationSolidIcon, styles.iconPosition]}
+      source={require("../assets/claritynotificationsolid.png")}
+    />
+  </Pressable>
+) : (
+  <Pressable 
+    onPress={() => Alert.alert("Sign in to get history")} 
+    style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: 20 }}
+  >
+    <Image
+      style={[styles.claritynotificationSolidIcon, styles.iconPosition]}
+      source={require("../assets/claritynotificationsolid.png")}
+    />
+  </Pressable>
+)}
+
+
+
       </View>
 
       <Modal animationType="fade" transparent visible={rectangle1Visible}>
@@ -831,7 +851,9 @@ const styles = StyleSheet.create({
     position: "absolute",
   },
   claritynotificationSolidIcon: {
-    top: 26,
+    top: 50,
+    elevation: 100,
+    zIndex: 500,
     left: 300,
     width: 36,
     height: 36,

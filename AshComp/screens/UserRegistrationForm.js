@@ -199,20 +199,6 @@ const UserRegistrationForm = ({ navigation }) => {
         />
         {errors.phone_number && <Text style={styles.errorText}>{errors.phone_number.message}</Text>}
 
-        <Controller
-          control={control}
-          render={({ field }) => (
-            <TextInput
-              style={styles.inputField}
-              placeholder="Enter BVN to create wallet"
-              onChangeText={(text) => field.onChange(text)}
-              keyboardType="numeric"
-            />
-          )}
-          name="bvn"
-          rules={{ required: 'BVN is required' }}
-        />
-        {errors.bvn && <Text style={styles.errorText}>{errors.bvn.message}</Text>}
 
       </View>
 

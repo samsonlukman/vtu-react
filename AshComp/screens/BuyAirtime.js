@@ -1,28 +1,73 @@
 import * as React from "react";
-import { useState } from "react";
-import { StyleSheet, Button, View, Text, Pressable, ScrollView, TextInput, Alert, ActivityIndicator} from "react-native";
+import { useState, useEffect } from "react";
+import { StyleSheet, Button, View, Text, Pressable, ScrollView, TextInput, Alert, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { useNavigation } from "@react-navigation/native";
 import { Color, FontFamily, FontSize, Border } from "../GlobalStyles";
 import axios from "axios";
 import * as Clipboard from 'expo-clipboard';
 import { useUser } from "../contexts/UserContext";
-
-
+import { useNotification } from "../contexts/NotificationContext";
+import { sendPushNotification } from "../components/NotificationHandler";
+import { useAuth } from "../contexts/AuthContext";
+import { Linking } from 'react-native';
 
 const BuyAirtime = () => {
   const navigation = useNavigation();
-  const [network, setNetwork] = React.useState(""); // State for selected network
-  const [amount, setAmount] = useState(""); // State for selected amount
-  const [phoneNumber, setPhoneNumber] = useState(""); // State for phone number
+  const [network, setNetwork] = React.useState(""); 
+  const [amount, setAmount] = useState(""); 
+  const [phoneNumber, setPhoneNumber] = useState(""); 
   const [selectedProductCode, setSelectedProductCode] = useState("");
   const [copiedText, setCopiedText] = React.useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
+  const [paymentChoice, setPaymentChoice] = useState("");
   const { userData, loading, wallet } = useUser();
+  const expoPushToken = useNotification();
+  const { user } = useAuth();
+  const [csrfToken, setCsrfToken] = useState("");
 
-  const handleCopyToClipboard = async () => {
-    await Clipboard.setStringAsync(phoneNumber);
-    alert('Copied to clipboard!');
+  // Fetch CSRF token when component mounts
+  useEffect(() => {
+    const fetchCsrfToken = async () => {
+      try {
+        const csrfResponse = await axios.get('http://192.168.43.179:8000/api/get-csrf-token/');
+        setCsrfToken(csrfResponse.data.csrf_token);
+      } catch (error) {
+        console.error('Error fetching CSRF token:', error.message);
+      }
+    };
+
+    fetchCsrfToken();
+  }, []);
+
+  const openPaymentLink = async (url) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert("Error", "Cannot open the payment link");
+      }
+    } catch (error) {
+      console.error("Failed to open URL:", error);
+      Alert.alert("Error", "Failed to open the payment link. Please try again.");
+    }
+  };
+
+  const handleCopyToClipboard = async (text) => {
+    try {
+      await Clipboard.setString(text);
+      Alert.alert('Payment Link copied to clipboard');
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      Alert.alert('Error', 'Failed to copy to clipboard.');
+    }
+  };
+
+  const handlePaymentChoice = (choice) => {
+    setPaymentChoice(choice);
+    console.log(choice);
   };
 
   const fetchCopiedText = async () => {
@@ -31,39 +76,38 @@ const BuyAirtime = () => {
   };
 
   const handleNetworkSelection = (network) => {
-    setSelectedProductCode(network); // Update selected network
-    console.log(network)
-    
+    setSelectedProductCode(network);
+    console.log(network);
   };
 
   const handleAmountSelection = (amount) => {
-    setAmount(amount); // Update selected network
-    console.log(amount)
-    
+    setAmount(amount);
+    console.log(amount);
   };
-  
-  const handleBuyAirtime = async () => {
+
+  const handleWalletBuyAirtime = async () => {
     console.log("Selected Network:", selectedProductCode);
     console.log("Amount:", amount);
     console.log("Phone Number:", phoneNumber);
-  
+
     if (!selectedProductCode) {
-      Alert.alert("Select a network provider");
+      Alert.alert('Select a network provider');
       return;
     }
-  
+
+    if (!paymentChoice) {
+      Alert.alert("Choose Payment Option");
+      return;
+    }
+
     if (phoneNumber.length !== 11) {
-      Alert.alert(
-        "Invalid Phone Number",
-        "Please enter a valid 11-digit phone number."
-      );
+      Alert.alert('Invalid Phone Number', 'Please enter a valid 11-digit phone number.');
       return;
     }
-  
-    setIsLoading(true); // Set isLoading to true when starting the API call
-  
+
+    setIsLoading(true);
+
     try {
-      // Prepare data for Flutterwave API request
       const flutterwaveUrl = 'https://api.flutterwave.com/v3/transfers';
       const secret_key = 'FLWSECK-fab12578d0fa352253f89fd6a7b7b713-18f55ce05d4vt-X';
 
@@ -75,64 +119,239 @@ const BuyAirtime = () => {
         narration: `${amount} recharge for ${selectedProductCode} ${phoneNumber}`,
         debit_subaccount: `${userData.account_reference}`
       };
-      
+
       const flutterwaveHeaders = {
         'Authorization': `Bearer ${secret_key}`,
         'Content-Type': 'application/json'
       };
-  
-      // Make API request to Flutterwave using Axios
+
       const transferResponse = await axios.post(flutterwaveUrl, flutterwaveParams, {
         headers: flutterwaveHeaders
       });
-  
-      if (
-        transferResponse.data.status === 'success' &&
-        transferResponse.data.message === 'Transfer Queued Successfully'
-      ) {
-        console.log("Feedback: ", transferResponse.data.message);
-  
-        // Prepare data for VTU API request
-        const csrfResponse = await axios.get(
-          "http://192.168.43.179:8000/api/get-csrf-token/"
-        );
-        const csrfToken = csrfResponse.data.csrf_token;
-  
+
+      if (transferResponse.data.status === 'success' && transferResponse.data.message === 'Transfer Queued Successfully') {
         const vtuParams = {
           amount: amount,
           product_code: selectedProductCode,
           number: phoneNumber,
         };
-  
-        const vtuHeaders = {
-          "Content-Type": "application/json",
-          "X-CSRFToken": csrfToken,
+
+        const historyParams = {
+          user: userData.id,
+          text: `Airtime purchase: ${amount} to ${phoneNumber} ${selectedProductCode}`
         };
-  
-        // Make API request to VTU API using Axios
-        const response = await axios.post(
-          "http://192.168.43.179:8000/api/vtu-api/",
-          vtuParams,
-          {
-            headers: vtuHeaders,
-          }
-        );
-  
+
+        const vtuHeaders = {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        };
+
+        const response = await axios.post('http://192.168.43.179:8000/api/vtu-api/', vtuParams, {
+          headers: vtuHeaders,
+        });
+
         if (response.data.success === true) {
-          Alert.alert("Feedback: ", response.data.message);
+          Alert.alert('Feedback: ', response.data.message);
+
+          await sendPushNotification(
+            expoPushToken,
+            'Airtime Purchase Successful',
+            `You have successfully purchased ${amount} worth of airtime for ${phoneNumber}`,
+            { product_code: selectedProductCode, amount, phoneNumber }
+          );
+
+          await axios.post('http://192.168.43.179:8000/api/history/', historyParams, {
+            headers: vtuHeaders,
+          });
+
+          navigation.navigate("Home");
         } else {
-          Alert.alert("Error", response.data.message);
+          Alert.alert('Error', response.data.message);
         }
       } else {
-        Alert.alert("Error", transferResponse.data.message);
+        Alert.alert('Error', transferResponse.data.message);
       }
     } catch (error) {
-      console.error("Error:", error.message);
-      Alert.alert("Error", error.message);
+      console.error('Error:', error.message);
+      Alert.alert('Error', error.message);
     } finally {
-      setIsLoading(false); // Set isLoading back to false after API call completion
+      setIsLoading(false);
     }
   };
+
+  const handleCardUssdBuyAirtime = async () => {
+    console.log("Selected Network:", selectedProductCode);
+    console.log("Amount:", amount);
+    console.log("Phone Number:", phoneNumber);
+
+    function generateRandomString(length) {
+        let result = '';
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        const charactersLength = characters.length;
+        for (let i = 0; i < length; i++) {
+            result += characters.charAt(Math.floor(Math.random() * charactersLength));
+        }
+        return result;
+    }
+
+    if (!selectedProductCode) {
+        Alert.alert('Select a network provider');
+        return;
+    }
+
+    if (!paymentChoice) {
+        Alert.alert("Choose Payment Option");
+        return;
+    }
+
+    if (phoneNumber.length !== 11) {
+        Alert.alert('Invalid Phone Number', 'Please enter a valid 11-digit phone number.');
+        return;
+    }
+
+    setIsLoading(true);
+    setLoadingMessage('Processing payment...');
+
+    try {
+        const flutterwaveUrl = 'https://api.flutterwave.com/v3/payments';
+        const secret_key = 'FLWSECK-fab12578d0fa352253f89fd6a7b7b713-18f55ce05d4vt-X';
+
+        const tx_ref = `payville-airtime-${generateRandomString(25)}`;
+
+        const flutterwaveParams = {
+            tx_ref: tx_ref,
+            amount: amount,
+            currency: 'NGN',
+            redirect_url: 'https://9b60-105-113-18-64.ngrok-free.app/api/index/',
+            customer: {
+                email: userData.email || 'anonymous@gmail.com',
+                phonenumber: phoneNumber,
+                name: userData.username || 'anonymous user',
+            },
+            customizations: {
+                title: 'Airtime Purchase',
+                description: `Airtime purchase of ${amount} NGN for ${phoneNumber}`,
+            },
+        };
+
+        const flutterwaveHeaders = {
+            'Authorization': `Bearer ${secret_key}`,
+            'Content-Type': 'application/json'
+        };
+
+        const paymentResponse = await axios.post(flutterwaveUrl, flutterwaveParams, {
+            headers: flutterwaveHeaders
+        });
+
+        if (paymentResponse.data.status === 'success') {
+            const paymentLink = paymentResponse.data.data.link;
+            Clipboard.setString(paymentLink);
+            Alert.alert('Payment Link copied to your clipboard.', 'Timeout in 180 seconds. We will keep checking for the payment every 45 seconds. Do not leave the page until transaction is succesfful or timeout',
+             '', [
+                {
+                    text: 'OK', onPress: async () => {
+                        setLoadingMessage('Verifying payment...');
+
+                        let retryCount = 0;
+                        const maxRetries = 4; // Total of 2 minutes (4 retries with 30 seconds interval)
+                        const interval = 45000; // 30 seconds interval
+
+                        const intervalId = setInterval(async () => {
+                            retryCount++;
+
+                            try {
+                                // Fetch transaction details from your backend
+                                const transactionResponse = await axios.get('http://192.168.43.179:8000/api/transactions/', {
+                                    headers: {
+                                        'X-CSRFToken': csrfToken,
+                                    }
+                                });
+
+                                const transaction = transactionResponse.data.find(tx => tx.tx_ref === tx_ref);
+                                if (!transaction) {
+                                    throw new Error('Transaction not found');
+                                }
+
+                                // Verify the payment using Flutterwave API
+                                const verifyUrl = `https://api.flutterwave.com/v3/transactions/${transaction.transaction_id}/verify`;
+                                const verifyResponse = await axios.get(verifyUrl, {
+                                    headers: {
+                                        'Authorization': `Bearer ${secret_key}`,
+                                        'Content-Type': 'application/json'
+                                    }
+                                });
+
+                                if (verifyResponse.data.status === 'success' && verifyResponse.data.data.status === 'successful') {
+                                    clearInterval(intervalId);
+
+                                    const vtuParams = {
+                                        amount: amount,
+                                        product_code: selectedProductCode,
+                                        number: phoneNumber,
+                                    };
+
+                                    const historyParams = {
+                                        user: userData.id,
+                                        text: `Airtime purchase: ${amount} to ${phoneNumber} ${selectedProductCode}`
+                                    };
+
+                                    const vtuHeaders = {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRFToken': csrfToken,
+                                    };
+
+                                    const vtuResponse = await axios.post('http://192.168.43.179:8000/api/vtu-api/', vtuParams, {
+                                        headers: vtuHeaders,
+                                    });
+
+                                    if (vtuResponse.data.success === true) {
+                                        Alert.alert('Feedback: ', vtuResponse.data.message);
+
+                                        await sendPushNotification(
+                                            expoPushToken,
+                                            'Airtime Purchase Successful',
+                                            `You have successfully purchased ${amount} worth of airtime for ${phoneNumber}`,
+                                            { product_code: selectedProductCode, amount, phoneNumber }
+                                        );
+
+                                        await axios.post('http://192.168.43.179:8000/api/history/', historyParams, {
+                                            headers: vtuHeaders,
+                                        });
+
+                                        navigation.navigate("Home");
+                                    } else {
+                                        Alert.alert('Error', vtuResponse.data.message);
+                                    }
+                                    setIsLoading(false); // Stop loading after successful verification
+                                } else if (retryCount >= maxRetries) {
+                                    clearInterval(intervalId);
+                                    Alert.alert('Error', 'Payment verification failed after multiple attempts.');
+                                    setIsLoading(false); // Stop loading after max retries
+                                }
+                            } catch (error) {
+                                console.error('Verification Error:', error.response ? error.response.data : error.message);
+                                if (retryCount >= maxRetries) {
+                                    clearInterval(intervalId);
+                                    Alert.alert('Verification Error', error.response ? error.response.data.message : error.message);
+                                    setIsLoading(false); // Stop loading after max retries
+                                }
+                            }
+                        }, interval);
+                    }
+                }
+            ]);
+        } else {
+            Alert.alert('Error', paymentResponse.data.message);
+            setIsLoading(false); // Stop loading if initial payment fails
+        }
+    } catch (error) {
+        console.error('Error:', error.response ? error.response.data : error.message);
+        Alert.alert('Error', error.response ? error.response.data.message : error.message);
+        setIsLoading(false); // Stop loading on catch block error
+    }
+};
+
+
   
 
   return (
@@ -146,7 +365,14 @@ const BuyAirtime = () => {
         source={require("../assets/rectangle-10.png")}
       />
       <Text style={[styles.buyAirtime1, styles.buyTypo]}>Buy Airtime</Text>
-      <Text style={styles.walletBalance5000}>Wallet Balance: ₦{wallet} </Text>
+      {user && user.isAuthenticated ? (
+  <Text style={styles.walletBalance5000}>
+    {userData && userData.account_number ? `Wallet Balance: ₦${wallet}` : '***'}
+  </Text>
+) : (
+  <Text style={styles.walletBalance5000}>Wallet Balance: Login to see balance</Text>
+)}
+
       <View style={styles.amountInputWrapper}>
       <Pressable onLongPress={handleCopyToClipboard}>
       <TextInput
@@ -224,11 +450,20 @@ const BuyAirtime = () => {
       </View>
       
       <View style={[styles.rectangleContainer, styles.groupChildLayout3]}>
-        <View style={[styles.groupChild3, styles.groupChildPosition1]} />
-        <View style={[styles.groupChild4, styles.groupChildPosition]} />
-        <Text style={[styles.atm, styles.atmPosition]}>ATM</Text>
-        <Text style={[styles.wallet, styles.atmPosition]}>WALLET</Text>
-      </View>
+  <View style={[styles.groupChild3, styles.groupChildPosition1]} />
+  <View style={[styles.groupChild4, styles.groupChildPosition]} />
+  <Pressable onPress={() => handlePaymentChoice("atm")} style={[styles.atmPressable, styles.atmPosition]}>
+    <Text style={styles.atm}>Card, USSD</Text>
+  </Pressable>
+  <Pressable 
+  onPress={() => user && user.isAuthenticated ? handlePaymentChoice("wallet") : Alert.alert("Login to use wallet")} 
+  style={[styles.walletPressable, styles.atmPosition]}
+>
+  <Text style={styles.wallet}>WALLET</Text>
+</Pressable>
+
+</View>
+
       <View style={[styles.groupView, styles.groupChildLayout2]}>
         <View style={[styles.groupChild5, styles.groupChildLayout2]} />
         <View style={[styles.groupChild6, styles.groupChildLayout2]} />
@@ -262,20 +497,20 @@ const BuyAirtime = () => {
    
       
       <View style={styles.slide}>
-       {isLoading ? (
+  {isLoading ? (
     <ActivityIndicator size="large" color="#0000ff" />
-) : (
-  <Pressable onPress={handleBuyAirtime}>
-  <Text style={[ styles.buyTypo, styles.buyButton]}>Buy</Text>
-</Pressable>
-)}
+  ) : (
+    <Pressable onPress={paymentChoice === 'atm' ? handleCardUssdBuyAirtime : handleWalletBuyAirtime}>
+      <Text style={[styles.buyTypo, styles.buyButton]}>Buy</Text>
+    </Pressable>
+  )}
+  <Image
+    style={[styles.teenyiconsarrowSolid, styles.slideItemLayout]}
+    contentFit="cover"
+    source={require("../assets/teenyiconsarrowsolid.png")}
+  />
+</View>
 
-        <Image
-          style={[styles.teenyiconsarrowSolid, styles.slideItemLayout]}
-          contentFit="cover"
-          source={require("../assets/teenyiconsarrowsolid.png")}
-        />
-        </View>
       <Pressable
         style={[styles.mingcutebackFill, styles.bxscontactIconLayout]}
         onPress={() => navigation.goBack()}
@@ -403,6 +638,25 @@ const styles = StyleSheet.create({
   iconLayout: {
     height: "100%",
     width: "100%",
+  },
+
+  atmPressable: {
+    position: "absolute",
+    left: 20, // Adjust spacing between ATM and WALLET
+    top: 0,
+    width: 100,
+    height: 65,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  walletPressable: {
+    position: "absolute",
+    left: 140, // Adjust spacing between ATM and WALLET
+    top: 0,
+    width: 100,
+    height: 65,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   slideItemLayout: {
     maxHeight: "100%",
@@ -563,13 +817,15 @@ const styles = StyleSheet.create({
     position: "absolute",
   },
   atm: {
-    left: 30,
+    left: 5,
+    bottom: 10,
     color: Color.colorWhite,
     fontFamily: FontFamily.robotoBold,
     fontWeight: "700",
   },
   wallet: {
-    left: 220,
+    left: 35,
+    bottom: 10,
     color: Color.colorWhite,
     fontFamily: FontFamily.robotoBold,
     fontWeight: "700",

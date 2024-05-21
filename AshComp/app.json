@@ -18,13 +18,40 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": [
+          "http",
+          "https"
+        ]
+      },
+      "bundleIdentifier": "com.samsonlukman.payville"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
-      }
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "http",
+              "host": "*"
+            },
+            {
+              "scheme": "https",
+              "host": "*"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
+      "package": "com.samsonlukman.payville"
     },
     "web": {
       "favicon": "./assets/favicon.png"

@@ -16,6 +16,7 @@ export const UserProvider = ({ children }) => {
         // Fetch user data
         const userDataResponse = await fetch('http://192.168.43.179:8000/api/user/');
         const userData = await userDataResponse.json();
+        console.log(userData)
         setUserData(userData);
 
         // Fetch account info
