@@ -11,6 +11,7 @@ import { useNotification } from "../contexts/NotificationContext";
 import { sendPushNotification } from "../components/NotificationHandler";
 import { useAuth } from "../contexts/AuthContext";
 import { Linking } from 'react-native';
+import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 
 const BuyAirtime = () => {
   const navigation = useNavigation();
@@ -569,11 +570,14 @@ const styles = StyleSheet.create({
   textInputWrapper: {
     top: 400,
     height: 37,
-    width: 279,
+    width: '70%',
     backgroundColor: Color.colorGainsboro_100,
     borderRadius: Border.br_6xs,
-    left: 40,
+    left: '15%',
     elevation: 60
+  },
+  textInput: {
+    left: '10%'
   },
   buyButton: {
     backgroundColor: Color.colorDarkcyan_100,
@@ -585,10 +589,10 @@ const styles = StyleSheet.create({
   amountInputWrapper: {
     top: 500,
     height: 37,
-    width: 279,
+    width: '70%',
     backgroundColor: Color.colorGainsboro_100,
     borderRadius: Border.br_6xs,
-    left: 40,
+    left: '15%',
     elevation: 60
   },
   groupLayout1: {
@@ -665,8 +669,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   buyAirtimeChild: {
-    top: 100,
-    left: 30,
+    top: hp('11.76%'),
+    left: wp('10%'),
     shadowColor: "rgba(0, 0, 0, 1)",
     shadowOffset: {
       width: 0,
@@ -676,12 +680,11 @@ const styles = StyleSheet.create({
     elevation: 20,
     shadowOpacity: 1, // Increase the shadow opacity
     borderRadius: Border.br_19xl,
-    width: 300,
-    height: 621,
+    width: wp('80%'),
+    height: hp('80%'),
     position: "absolute",
     backgroundColor: Color.colorWhite,
   },
-  
   walletBalance5000: {
     top: 170,
     left: 120,

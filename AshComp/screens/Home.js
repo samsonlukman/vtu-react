@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Image } from "expo-image";
-import { Animated, StyleSheet, Text, View, Pressable, Modal, ScrollView, Button, Alert } from "react-native";
+import { Animated, StyleSheet, Text, View, Pressable, Modal, ScrollView, Button, Alert, SafeAreaView } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import Frame1 from "../components/Frame1";
 import Frame2 from "../components/frame2";
@@ -9,6 +9,8 @@ import SideBar from "../components/SideBar";
 import { Color, FontSize, FontFamily, Border } from "../GlobalStyles";
 import { useAuth } from "../contexts/AuthContext";
 import axios from "axios";
+import { Dimensions } from 'react-native';
+import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 
 
 const Home = () => {
@@ -22,6 +24,8 @@ const Home = () => {
   const openRectangle1 = useCallback(() => {
     setRectangle1Visible(true);
   }, []);
+
+  const { width, height } = Dimensions.get('window');
 
   const closeRectangle1 = useCallback(() => {
     setRectangle1Visible(false);
@@ -166,6 +170,7 @@ const Home = () => {
 
   return (
     <>
+    <SafeAreaView style={{ flex: 1 }}>
     <ScrollView>
       <View style={styles.home}>
       
@@ -248,7 +253,7 @@ const Home = () => {
               onPress={() => navigation.navigate("PayBill2")}
             >
               <Image
-                style={[styles.icon, styles.iconLayout1]}
+                style={[styles.icon, styles.iconLayout1, {right: wp('6%') }]}
                 contentFit="cover"
                 source={require("../assets/rectangle-16.png")}
               />
@@ -296,7 +301,7 @@ const Home = () => {
             <Text style={[styles.buyData1, styles.buyTypo]}>Corporate Data</Text>
           </View>
           <Image
-            style={[styles.serviceButtonsChild, styles.payBillPosition]}
+            style={[styles.serviceButtonsChild, styles.payBillPhcn]}
             contentFit="cover"
             source={require("../assets/rectangle-12.png")}
           />
@@ -305,16 +310,12 @@ const Home = () => {
               style={[styles.wrapper, styles.cableLayout]}
               onPress={() => navigation.navigate("PayBill")}
             >
-              <Image
-                style={[styles.icon, styles.iconLayout1]}
-                contentFit="cover"
-                source={require("../assets/rectangle-12.png")}
-              />
+             
             </Pressable>
             <Text style={[styles.payBill1, styles.buyTypo]}>Pay Bill</Text>
           </View>
           <Text style={[styles.rechargePin, styles.fundWallet1Typo]}>
-            Cheap SME Data
+            SME Data
           </Text>
          
 
@@ -337,7 +338,7 @@ const Home = () => {
       source={require("../assets/materialsymbolscontactpage.png")}
     />
 
-    <Text style={[styles.withdrawal, styles.shareAppTypo]}>
+    <Text style={[styles.contactPosition, styles.shareAppTypo]}>
       Contact Us
     </Text>
     </Pressable>
@@ -433,6 +434,7 @@ const Home = () => {
 
     
       </ScrollView>
+      </SafeAreaView>
     </>
   );
 };
@@ -476,25 +478,34 @@ const styles = StyleSheet.create({
     position: "absolute",
   },
   cableLayout: {
-    height: 126,
-    width: 112,
-    left: 0,
-    
+    height: hp('15.75%'), // 126 pixels
+    width: wp('28%'), // 112 pixels
+    left: wp('0%'), // 0 pixels
     position: "absolute",
   },
   iconLayout1: {
     height: "100%",
     width: "100%",
   },
+  contactPosition: {
+    left: '20%',
+  },
   payBillPosition: {
+    
     left: 240,
-    height: 126,
+    height: 100,
     width: 112,
     position: "absolute",
-    marginRight: 20
+   
+  },
+  payBillPhcn: {
+    height: hp('15.75%'), // 126 pixels
+    width: wp('28%'), // 112 pixels
+    left: wp('60%'), // 0 pixels
+    position: "absolute",
   },
   shareAppTypo: {
-    top: 101,
+    top: 85,
     fontSize: FontSize.size_xs,
     color: Color.colorWhite,
     textAlign: "left",
@@ -503,15 +514,15 @@ const styles = StyleSheet.create({
     position: "absolute",
   },
   framePosition: {
-    left: 120,
-    height: 126,
-    width: 112,
+    height: hp('15.75%'), // 126 pixels
+    width: wp('28%'), // 112 pixels
+    left: wp('30%'),
     position: "absolute",
   },
   buyTypo: {
-    top: 95,
+    top: 85,
+    left: '10%',
     fontSize: FontSize.size_xs,
-    textAlign: "left",
     fontFamily: FontFamily.robotoBold,
     fontWeight: "700",
     position: "absolute",
@@ -532,8 +543,8 @@ const styles = StyleSheet.create({
     shadowColor: "rgba(0, 0, 0, 0.25)",
     borderRadius: Border.br_lgi,
     top: 0,
-    height: 126,
-    width: 112,
+    height: hp('15%'), // 126 pixels
+    width: wp('28%'), // 112 pixels
     position: "absolute",
   },
   iconPosition: {
@@ -577,26 +588,26 @@ const styles = StyleSheet.create({
     textAlign: "left",
   },
   homeItem: {
-    top: 186,
-    left: 30, // Adjusted left position
+    top: '20%',
+    left: '6%', // Adjusted left position
     borderRadius: 29,
-    width: 300, // Reduced width by 20 units
-    height: 237,
+    width: '90%', // Reduced width by 20 units
+    height: '21%',
     position: "absolute",
   },
   
   phoneBill1Icon: {
-    top: 140,
-    width: 150,
-    height: 200,
-    left: 190,
+    top: hp('21%'), // Converted top to percentage
+    width: wp('50%'), // Converted width to percentage
+    height: hp('25%'), // Converted height to percentage
+    left: wp('50%'), // Converted left to percentage
     position: "absolute",
   },
   homeInner: {
-    top: 326,
-    left: 207,
-    width: 108,
-    height: 14,
+    top: hp('40.75%'), // 326 pixels
+    left: wp('51.75%'), // 207 pixels
+    width: wp('27%'), // 108 pixels
+    height: hp('1.75%'), // 14 pixels
     position: "absolute",
   },
   wallet: {
@@ -649,15 +660,16 @@ const styles = StyleSheet.create({
     top: 0,
   },
   payForCable: {
-    top: 98,
-    left: 19,
+    top: 85,
+    left: 10,
     color: Color.colorWhite,
   },
   cable: {
     top: 158,
   },
   withdrawal: {
-    left: 27,
+    left: '2%',
+  
   },
   withdraw: {
     top: 158,
@@ -689,9 +701,14 @@ const styles = StyleSheet.create({
     top: 0,
   },
   rechargePin: {
-    top: 256,
-    left: 129,
-    color: Color.colorWhite,
+    top: hp('35%'), // 245 pixels
+    left: wp('36%'), // 120 pixels
+    fontSize: FontSize.size_mini,
+    textAlign: "left",
+    fontFamily: FontFamily.robotoBold,
+    fontWeight: "700",
+    position: "absolute",
+    color: Color.colorWhite
   },
   rectangle1Overlay: {
     flex: 1,
@@ -712,20 +729,23 @@ const styles = StyleSheet.create({
   },
   contactUsItem: {
     top: 34,
-    width: 79,
-    height: 92,
+    width: 70,
+    height: 70,
     left: 0,
     position: "absolute",
   },
   materialSymbolscontactPageIcon: {
-    top: 28,
-    width: 64,
-    height: 64,
-    left: 27,
+    height: "43.25%",
+    width: "40.18%",
+    top: "19%",
+    right: "30.36%",
+    bottom: "32.7%",
+    left: "29.46%",
+    position: "absolute",
   },
   contactUs: {
     width: 113,
-    left: 128,
+    left: 115,
   },
   rectangle2Overlay: {
     flex: 1,
@@ -745,23 +765,23 @@ const styles = StyleSheet.create({
     left: 0,
   },
   shareItem: {
-    top: 36,
-    width: 76,
-    height: 90,
+    top: 33,
+    width: 68,
+    height: 72,
     left: 0,
     position: "absolute",
   },
   vectorIcon: {
-    height: "43.25%",
+    height: "40.25%",
     width: "40.18%",
-    top: "24.05%",
+    top: "19%",
     right: "30.36%",
     bottom: "32.7%",
     left: "29.46%",
     position: "absolute",
   },
   shareApp: {
-    left: 29,
+    left: 25,
   },
   share: {
     left: 1,
@@ -769,11 +789,10 @@ const styles = StyleSheet.create({
     top: 316,
   },
   serviceButtons: {
-    top: 518,
-    width: 370,
-    height: 442,
-   
+    top: hp('75%'), // 518 pixels
     position: "absolute",
+    left: wp('5%'),  // Centering the container
+    width: wp('80%'), // Ensuring the container doesn't exceed screen width
   },
   sLIDEContainerOverlay: {
     flex: 1,

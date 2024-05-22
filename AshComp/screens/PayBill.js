@@ -528,6 +528,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     backgroundColor: Color.colorWhite,
   },
+  textInput: {
+    left: '10%'
+  },
   walletBalance5000: {
     top: 230,
     color: Color.colorBlack,
@@ -569,19 +572,19 @@ const styles = StyleSheet.create({
   smartcardNumber: {
     top: 410,
     height: 37,
-    width: 279,
+    width: '70%',
     backgroundColor: Color.colorGainsboro_100,
     borderRadius: Border.br_6xs,
-    left: 40,
+    left: '15%',
     elevation: 60
   },
   amountInputWrapper: {
     top: 500,
     height: 37,
-    width: 279,
+    width: '70%',
     backgroundColor: Color.colorGainsboro_100,
     borderRadius: Border.br_6xs,
-    left: 40,
+    left: '15%',
     elevation: 60
   },
   amount: {

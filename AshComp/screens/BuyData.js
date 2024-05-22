@@ -11,9 +11,11 @@ import { useUser } from "../contexts/UserContext";
 import { useNotification } from "../contexts/NotificationContext";// Import the sendPushNotification function
 import { sendPushNotification } from "../components/NotificationHandler";
 import { useAuth } from "../contexts/AuthContext";
+import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 
 const BuyData = () => {
   const navigation = useNavigation();
+  const [plansLoading, setPlansLoading] = useState(true);
   const [network, setNetwork] = useState("");
   const [productCode, setProductCode] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -43,7 +45,6 @@ const BuyData = () => {
 
 
   React.useEffect(() => {
-    // Fetch data plans when component mounts
     axios.get("http://192.168.43.179:8000/api/sme-plans/")
       .then(response => {
         const data = response.data;
@@ -53,9 +54,11 @@ const BuyData = () => {
           "glo": data.glo.glo_data,
           "nineMobile": data.nineMobile.nineMobile_data,
         });
+        setPlansLoading(false);
       })
       .catch(error => {
         console.error('Error fetching data plans:', error);
+        setPlansLoading(false);
       });
   }, []);
 
@@ -365,31 +368,44 @@ const handleCardUssdBuySmeData = async () => {
       
 
      <View style={styles.pickerContainer}> 
-    {/* Network Selection */}
-      <Picker style={styles.picker}
-          selectedValue={network}
-          onValueChange={(itemValue) => handleNetworkSelection(itemValue)}
+  {/* Network Selection */}
+  {plansLoading ? (
+    <Text style={styles.picker}>Fetching plans...</Text>
+  ) : (
+    <>
+      <Picker
+        style={styles.picker}
+        selectedValue={network}
+        onValueChange={(itemValue) => handleNetworkSelection(itemValue)}
+      >
+        <Picker.Item label="Select Network" value="" />
+        <Picker.Item label="Glo" value="glo" />
+        <Picker.Item label="Airtel" value="airtel" />
+        <Picker.Item label="MTN" value="mtn" />
+        <Picker.Item label="9mobile" value="nineMobile" />
+      </Picker>
+
+      {/* Product Code Selection */}
+      {network && (
+        <Picker
+          style={styles.picker}
+          selectedValue={productCode}
+          onValueChange={(itemValue) => handleProductCodeSelection(itemValue)}
         >
-          <Picker.Item label="Select Network" value="" />
-          <Picker.Item label="Glo" value="glo" />
-          <Picker.Item label="Airtel" value="airtel" />
-          <Picker.Item label="MTN" value="mtn" />
-          <Picker.Item label="9mobile" value="nineMobile" />
+          <Picker.Item label="Select Package" value="" />
+          {productCodeOptions[network].map((option, index) => (
+            <Picker.Item
+              key={index}
+              label={`${option.service_name} ${parseInt(option.service_default_price) + 50}`}
+              value={option.service_name}
+            />
+          ))}
         </Picker>
-      
-        {/* Product Code Selection */}
-        {network && (
-          <Picker style={styles.picker}
-            selectedValue={productCode}
-            onValueChange={(itemValue) => handleProductCodeSelection(itemValue)}
-          >
-            <Picker.Item label="Select Package" value="" />
-            {productCodeOptions[network].map((option, index) => (
-                <Picker.Item key={index} label={`${option.service_name} ${parseInt(option.service_default_price) + 50}`} value={option.service_name} />
-            ))}
-          </Picker>
-        )}
-      </View>
+      )}
+    </>
+  )}
+</View>
+
      
       <View>
       <Pressable onLongPress={handleCopyToClipboard} style={styles.rectangleView}>
@@ -610,8 +626,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   buyAirtimeChild: {
-    top: 100,
-    left: 30,
+    top: hp('11.76%'),
+    left: wp('10%'),
     shadowColor: "rgba(0, 0, 0, 1)",
     shadowOffset: {
       width: 0,
@@ -621,8 +637,8 @@ const styles = StyleSheet.create({
     elevation: 20,
     shadowOpacity: 1, // Increase the shadow opacity
     borderRadius: Border.br_19xl,
-    width: 300,
-    height: 621,
+    width: wp('80%'),
+    height: hp('80%'),
     position: "absolute",
     backgroundColor: Color.colorWhite,
   },

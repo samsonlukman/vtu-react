@@ -544,11 +544,14 @@ const styles = StyleSheet.create({
   smartcardNumber: {
     top: 500,
     height: 37,
-    width: 279,
+    width: '70%',
     backgroundColor: Color.colorGainsboro_100,
     borderRadius: Border.br_6xs,
-    left: 40,
+    left: '15%',
     elevation: 60
+  },
+  textInput: {
+    left: '10%'
   },
   amount: {
     top: 471,
