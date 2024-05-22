@@ -217,10 +217,10 @@ const handleCardUssdBuySmeData = async () => {
           amount: parseInt(selectedProduct.service_default_price) + 50,
           currency: 'NGN',
           redirect_url: 'https://payville.pythonanywhere.com/api/index/',
-           customer: {
-            email: userData ? userData.email : 'anonymous@gmail.com',
+          customer: {
+            email: userData && userData.email ? userData.email : 'anonymous@gmail.com',
             phonenumber: '08080808080',
-            name: userData ? userData.username : 'anonymous user',
+            name: userData && userData.username ? userData.username : 'anonymous user',
           },
           customizations: {
               title: 'Data Purchase',
