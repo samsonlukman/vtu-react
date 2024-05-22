@@ -32,7 +32,7 @@ const BuyAirtime = () => {
   useEffect(() => {
     const fetchCsrfToken = async () => {
       try {
-        const csrfResponse = await axios.get('http://192.168.43.179:8000/api/get-csrf-token/');
+        const csrfResponse = await axios.get('https://payville.pythonanywhere.com/api/get-csrf-token/');
         setCsrfToken(csrfResponse.data.csrf_token);
       } catch (error) {
         console.error('Error fetching CSRF token:', error.message);
@@ -147,7 +147,7 @@ const BuyAirtime = () => {
           'X-CSRFToken': csrfToken,
         };
 
-        const response = await axios.post('http://192.168.43.179:8000/api/vtu-api/', vtuParams, {
+        const response = await axios.post('https://payville.pythonanywhere.com/api/vtu-api/', vtuParams, {
           headers: vtuHeaders,
         });
 
@@ -161,7 +161,7 @@ const BuyAirtime = () => {
             { product_code: selectedProductCode, amount, phoneNumber }
           );
 
-          await axios.post('http://192.168.43.179:8000/api/history/', historyParams, {
+          await axios.post('https://payville.pythonanywhere.com/api/history/', historyParams, {
             headers: vtuHeaders,
           });
 
@@ -223,11 +223,11 @@ const BuyAirtime = () => {
             tx_ref: tx_ref,
             amount: amount,
             currency: 'NGN',
-            redirect_url: 'https://9b60-105-113-18-64.ngrok-free.app/api/index/',
+            redirect_url: 'https://payville.pythonanywhere.com/api/index/',
             customer: {
-                email: userData.email || 'anonymous@gmail.com',
-                phonenumber: phoneNumber,
-                name: userData.username || 'anonymous user',
+              email: userData && userData.email ? userData.email : 'anonymous@gmail.com',
+              phonenumber: '08080808080',
+              name: userData && userData.username ? userData.username : 'anonymous user',
             },
             customizations: {
                 title: 'Airtime Purchase',
@@ -262,7 +262,7 @@ const BuyAirtime = () => {
 
                             try {
                                 // Fetch transaction details from your backend
-                                const transactionResponse = await axios.get('http://192.168.43.179:8000/api/transactions/', {
+                                const transactionResponse = await axios.get('https://payville.pythonanywhere.com/api/transactions/', {
                                     headers: {
                                         'X-CSRFToken': csrfToken,
                                     }
@@ -301,7 +301,7 @@ const BuyAirtime = () => {
                                         'X-CSRFToken': csrfToken,
                                     };
 
-                                    const vtuResponse = await axios.post('http://192.168.43.179:8000/api/vtu-api/', vtuParams, {
+                                    const vtuResponse = await axios.post('https://payville.pythonanywhere.com/api/vtu-api/', vtuParams, {
                                         headers: vtuHeaders,
                                     });
 
@@ -315,7 +315,7 @@ const BuyAirtime = () => {
                                             { product_code: selectedProductCode, amount, phoneNumber }
                                         );
 
-                                        await axios.post('http://192.168.43.179:8000/api/history/', historyParams, {
+                                        await axios.post('https://payville.pythonanywhere.com/api/history/', historyParams, {
                                             headers: vtuHeaders,
                                         });
 
@@ -368,10 +368,10 @@ const BuyAirtime = () => {
       <Text style={[styles.buyAirtime1, styles.buyTypo]}>Buy Airtime</Text>
       {user && user.isAuthenticated ? (
   <Text style={styles.walletBalance5000}>
-    {userData && userData.account_number ? `Wallet Balance: ₦${wallet}` : '***'}
+    {userData && userData.account_number ? `Wallet Balance: ₦${wallet}` : 'Login to see wallet balance'}
   </Text>
 ) : (
-  <Text style={styles.walletBalance5000}>Wallet Balance: Login to see balance</Text>
+  <Text style={styles.walletBalance5000}>Login to see balance</Text>
 )}
 
       <View style={styles.amountInputWrapper}>

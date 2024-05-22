@@ -169,7 +169,7 @@ const PayBill2 = () => {
         transferResponse.data.message === 'Transfer Queued Successfully'
       ) {
 
-        const csrfResponse = await axios.get('http://192.168.43.179:8000/api/get-csrf-token/');
+        const csrfResponse = await axios.get('https://payville.pythonanywhere.com/api/get-csrf-token/');
         const csrfToken = csrfResponse.data.csrf_token;
         
         console.log("Feedback: ", transferResponse.data.message);
@@ -181,7 +181,7 @@ const PayBill2 = () => {
           { amount: amount, accountNumber: accountNumber }
         );
 
-        await axios.post('http://192.168.43.179:8000/api/history/', historyParams, {
+        await axios.post('https://payville.pythonanywhere.com/api/history/', historyParams, {
               headers: {
                 'X-CSRFToken': csrfToken,
                 'Content-Type': 'application/json' // Ensure you set the correct content type

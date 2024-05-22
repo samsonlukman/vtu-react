@@ -30,7 +30,7 @@ const BuySmeData = () => {
    useEffect(() => {
     const fetchCsrfToken = async () => {
       try {
-        const csrfResponse = await axios.get('http://192.168.43.179:8000/api/get-csrf-token/');
+        const csrfResponse = await axios.get('https://payville.pythonanywhere.com/api/get-csrf-token/');
         setCsrfToken(csrfResponse.data.csrf_token);
       } catch (error) {
         console.error('Error fetching CSRF token:', error.message);
@@ -123,7 +123,7 @@ const BuySmeData = () => {
       if (transferResponse.data.status === 'success' && transferResponse.data.message === 'Transfer Queued Successfully') {
         console.log("Feedback: ", transferResponse.data.message);
 
-        const csrfResponse = await axios.get('http://192.168.43.179:8000/api/get-csrf-token/');
+        const csrfResponse = await axios.get('https://payville.pythonanywhere.com/api/get-csrf-token/');
         const csrfToken = csrfResponse.data.csrf_token;
 
         const requestBody = {
@@ -134,7 +134,7 @@ const BuySmeData = () => {
 
         console.log('Data sent to backend:', requestBody);
 
-        const vtuResponse = await axios.post('http://192.168.43.179:8000/api/data-api/', requestBody, {
+        const vtuResponse = await axios.post('https://payville.pythonanywhere.com/api/data-api/', requestBody, {
                 headers: {
                     'X-CSRFToken': csrfToken,
                     'Content-Type': 'application/json' // Ensure you set the correct content type
@@ -158,7 +158,7 @@ const BuySmeData = () => {
             { product_code: productCode, amount, phoneNumber }
           );
 
-          await axios.post('http://192.168.43.179:8000/api/history/', historyParams, {
+          await axios.post('https://payville.pythonanywhere.com/api/history/', historyParams, {
               headers: {
                 'X-CSRFToken': csrfToken,
                 'Content-Type': 'application/json' // Ensure you set the correct content type
@@ -204,20 +204,21 @@ const BuySmeData = () => {
         const flutterwaveUrl = 'https://api.flutterwave.com/v3/payments';
         const secret_key = 'FLWSECK-fab12578d0fa352253f89fd6a7b7b713-18f55ce05d4vt-X';
         const flutterwaveParams = {
-            tx_ref: tx_ref,
-            amount: parseInt(selectedProduct.service_default_price),
-            currency: 'NGN',
-            redirect_url: 'https://9b60-105-113-18-64.ngrok-free.app/api/index/',
-            customer: {
-                email: userData.email || 'anonymous@gmail.com',
-                phonenumber: '08080808080',
-                name: userData.username || 'anonymous user',
-            },
-            customizations: {
-                title: 'Data Purchase',
-                description: `Data recharge for ${phoneNumber}`,
-            },
+          tx_ref: tx_ref,
+          amount: parseInt(selectedProduct.service_default_price),
+          currency: 'NGN',
+          redirect_url: 'https://payville.pythonanywhere.com/api/index/',
+          customer: {
+            email: userData && userData.email ? userData.email : 'anonymous@gmail.com',
+            phonenumber: '08080808080',
+            name: userData && userData.username ? userData.username : 'anonymous user',
+          },
+          customizations: {
+            title: 'Data Purchase',
+            description: `Data recharge for ${phoneNumber}`,
+          },
         };
+        
 
         console.log(flutterwaveParams)
         const flutterwaveHeaders = {
@@ -247,7 +248,7 @@ const BuySmeData = () => {
                 retryCount++;
                 try {
                     // Fetch transaction details from your backend
-                    const transactionResponse = await axios.get('http://192.168.43.179:8000/api/transactions/', {
+                    const transactionResponse = await axios.get('https://payville.pythonanywhere.com/api/transactions/', {
                         headers: {
                             'X-CSRFToken': csrfToken,
                         }
@@ -271,7 +272,7 @@ const BuySmeData = () => {
                         clearInterval(intervalId);
 
                         // Fetch CSRF token
-                        const csrfResponse = await axios.get('http://192.168.43.179:8000/api/get-csrf-token/');
+                        const csrfResponse = await axios.get('https://payville.pythonanywhere.com/api/get-csrf-token/');
                         const csrfToken = csrfResponse.data.csrf_token;
 
                         // Prepare data for VTU API request
@@ -283,7 +284,7 @@ const BuySmeData = () => {
 
                         console.log('Data sent to backend:', requestBody);
 
-                        const vtuResponse = await axios.post('http://192.168.43.179:8000/api/data-api/', requestBody, {
+                        const vtuResponse = await axios.post('https://payville.pythonanywhere.com/api/data-api/', requestBody, {
                             headers: {
                                 'X-CSRFToken': csrfToken,
                                 'Content-Type': 'application/json' // Ensure you set the correct content type
@@ -305,7 +306,7 @@ const BuySmeData = () => {
                                 { product_code: productCode, amount, phoneNumber }
                             );
 
-                            await axios.post('http://192.168.43.179:8000/api/history/', historyParams, {
+                            await axios.post('https://payville.pythonanywhere.com/api/history/', historyParams, {
                                 headers: {
                                     'X-CSRFToken': csrfToken,
                                     'Content-Type': 'application/json' // Ensure you set the correct content type

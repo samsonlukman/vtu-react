@@ -74,7 +74,7 @@ const Home = () => {
 
   const fetchUserData = useCallback(async () => {
     try {
-      const response = await fetch('http://192.168.43.179:8000/api/user/');
+      const response = await fetch('https://payville.pythonanywhere.com/api/user/');
       const data = await response.json();
       setUserData(data);
       setLoading(false); // Set loading to false after fetching user data
@@ -130,13 +130,13 @@ const Home = () => {
     }
   }, [userData, fetchAccountInfo]);
 
-  const csrfUrl = 'http://192.168.43.179:8000/api/get-csrf-token/';
+  const csrfUrl = 'https://payville.pythonanywhere.com/api/get-csrf-token/';
 
   const incrementAccountBalance = async (amount) => {
     try {
       const csrfResponse = await axios.get(`${csrfUrl}`);
       const csrfToken = csrfResponse.data.csrf_token;
-      const url = 'http://192.168.43.179:8000/api/increment-account-balance/';
+      const url = 'https://payville.pythonanywhere.com/api/increment-account-balance/';
       
       const headers = {
         'Content-Type': 'multipart/form-data',
@@ -157,6 +157,8 @@ const Home = () => {
       console.error('Error updating account balance:', error.message);
     }
   };
+
+  incrementAccountBalance();
 
   if (loading) {
     // Render loading indicator or skeleton screen while fetching user data

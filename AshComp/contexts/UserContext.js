@@ -14,7 +14,7 @@ export const UserProvider = ({ children }) => {
     const fetchData = async () => {
       try {
         // Fetch user data
-        const userDataResponse = await fetch('http://192.168.43.179:8000/api/user/');
+        const userDataResponse = await fetch('https://payville.pythonanywhere.com/api/user/');
         const userData = await userDataResponse.json();
         console.log(userData)
         setUserData(userData);

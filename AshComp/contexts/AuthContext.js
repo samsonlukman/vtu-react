@@ -4,8 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
 const AuthContext = createContext();
-const csrfUrl = 'http://192.168.43.179:8000/api/get-csrf-token/'
-const loginUrl = 'http://192.168.43.179:8000/api/user/login/'
+const csrfUrl = 'https://payville.pythonanywhere.com/api/get-csrf-token/'
+const loginUrl = 'https://payville.pythonanywhere.com/api/user/login/'
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
