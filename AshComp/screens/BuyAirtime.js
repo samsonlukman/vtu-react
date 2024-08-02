@@ -5,6 +5,7 @@ import { Image } from "expo-image";
 import { useNavigation } from "@react-navigation/native";
 import { Color, FontFamily, FontSize, Border } from "../GlobalStyles";
 import axios from "axios";
+import { Video } from 'expo-av';
 import * as Clipboard from 'expo-clipboard';
 import { useUser } from "../contexts/UserContext";
 import { useNotification } from "../contexts/NotificationContext";
@@ -26,13 +27,14 @@ const BuyAirtime = () => {
   const { userData, loading, wallet } = useUser();
   const expoPushToken = useNotification();
   const { user } = useAuth();
+  const referer = 'https://www.payvillesub.com'
   const [csrfToken, setCsrfToken] = useState("");
 
   // Fetch CSRF token when component mounts
   useEffect(() => {
     const fetchCsrfToken = async () => {
       try {
-        const csrfResponse = await axios.get('https://payville.pythonanywhere.com/api/get-csrf-token/');
+        const csrfResponse = await axios.get('https://www.payvillesub.com/api/get-csrf-token/');
         setCsrfToken(csrfResponse.data.csrf_token);
       } catch (error) {
         console.error('Error fetching CSRF token:', error.message);
@@ -69,6 +71,7 @@ const BuyAirtime = () => {
   const handlePaymentChoice = (choice) => {
     setPaymentChoice(choice);
     console.log(choice);
+    Alert.alert(`${choice} selected`)
   };
 
   const fetchCopiedText = async () => {
@@ -79,6 +82,18 @@ const BuyAirtime = () => {
   const handleNetworkSelection = (network) => {
     setSelectedProductCode(network);
     console.log(network);
+    if(network == 'mtn_custom'){
+      Alert.alert('MTN');
+    }
+    else if(network == 'glo_custom'){
+      Alert.alert('GLO');
+    }
+    else if(network == 'airtel_custom') {
+      Alert.alert('AIRTEL');
+    }
+    else if(network == '9mobile_custom'){
+      Alert.alert('9mobile');
+    }
   };
 
   const handleAmountSelection = (amount) => {
@@ -123,7 +138,8 @@ const BuyAirtime = () => {
 
       const flutterwaveHeaders = {
         'Authorization': `Bearer ${secret_key}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        
       };
 
       const transferResponse = await axios.post(flutterwaveUrl, flutterwaveParams, {
@@ -145,9 +161,10 @@ const BuyAirtime = () => {
         const vtuHeaders = {
           'Content-Type': 'application/json',
           'X-CSRFToken': csrfToken,
+          'referer': referer
         };
 
-        const response = await axios.post('https://payville.pythonanywhere.com/api/vtu-api/', vtuParams, {
+        const response = await axios.post('https://www.payvillesub.com/api/vtu-api/', vtuParams, {
           headers: vtuHeaders,
         });
 
@@ -161,7 +178,7 @@ const BuyAirtime = () => {
             { product_code: selectedProductCode, amount, phoneNumber }
           );
 
-          await axios.post('https://payville.pythonanywhere.com/api/history/', historyParams, {
+          await axios.post('https://www.payvillesub.com/api/history/', historyParams, {
             headers: vtuHeaders,
           });
 
@@ -223,7 +240,7 @@ const BuyAirtime = () => {
             tx_ref: tx_ref,
             amount: amount,
             currency: 'NGN',
-            redirect_url: 'https://payville.pythonanywhere.com/api/index/',
+            redirect_url: 'https://www.payvillesub.com/api/index/',
             customer: {
               email: userData && userData.email ? userData.email : 'anonymous@gmail.com',
               phonenumber: '08080808080',
@@ -237,7 +254,8 @@ const BuyAirtime = () => {
 
         const flutterwaveHeaders = {
             'Authorization': `Bearer ${secret_key}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            
         };
 
         const paymentResponse = await axios.post(flutterwaveUrl, flutterwaveParams, {
@@ -262,7 +280,7 @@ const BuyAirtime = () => {
 
                             try {
                                 // Fetch transaction details from your backend
-                                const transactionResponse = await axios.get('https://payville.pythonanywhere.com/api/transactions/', {
+                                const transactionResponse = await axios.get('https://www.payvillesub.com/api/transactions/', {
                                     headers: {
                                         'X-CSRFToken': csrfToken,
                                     }
@@ -299,9 +317,10 @@ const BuyAirtime = () => {
                                     const vtuHeaders = {
                                         'Content-Type': 'application/json',
                                         'X-CSRFToken': csrfToken,
+                                        'referer': referer
                                     };
 
-                                    const vtuResponse = await axios.post('https://payville.pythonanywhere.com/api/vtu-api/', vtuParams, {
+                                    const vtuResponse = await axios.post('https://www.payvillesub.com/api/vtu-api/', vtuParams, {
                                         headers: vtuHeaders,
                                     });
 
@@ -315,7 +334,7 @@ const BuyAirtime = () => {
                                             { product_code: selectedProductCode, amount, phoneNumber }
                                         );
 
-                                        await axios.post('https://payville.pythonanywhere.com/api/history/', historyParams, {
+                                        await axios.post('https://www.payvillesub.com/api/history/', historyParams, {
                                             headers: vtuHeaders,
                                         });
 
@@ -453,11 +472,11 @@ const BuyAirtime = () => {
       <View style={[styles.rectangleContainer, styles.groupChildLayout3]}>
   <View style={[styles.groupChild3, styles.groupChildPosition1]} />
   <View style={[styles.groupChild4, styles.groupChildPosition]} />
-  <Pressable onPress={() => handlePaymentChoice("atm")} style={[styles.atmPressable, styles.atmPosition]}>
+  <Pressable onPress={() => handlePaymentChoice("Card/USSD")} style={[styles.atmPressable, styles.atmPosition]}>
     <Text style={styles.atm}>Card, USSD</Text>
   </Pressable>
   <Pressable 
-  onPress={() => user && user.isAuthenticated ? handlePaymentChoice("wallet") : Alert.alert("Login to use wallet")} 
+  onPress={() => user && user.isAuthenticated ? handlePaymentChoice("Wallet") : Alert.alert("Login to use wallet")} 
   style={[styles.walletPressable, styles.atmPosition]}
 >
   <Text style={styles.wallet}>WALLET</Text>
@@ -499,9 +518,21 @@ const BuyAirtime = () => {
       
       <View style={styles.slide}>
   {isLoading ? (
-    <ActivityIndicator size="large" color="#0000ff" />
-  ) : (
-    <Pressable onPress={paymentChoice === 'atm' ? handleCardUssdBuyAirtime : handleWalletBuyAirtime}>
+          <View style={styles.loadingContainer}>
+          <Video
+            source={require('../assets/loading.mp4')} // Replace with your video URL
+            rate={1.0}
+            volume={1.0}
+            isMuted={false}
+            resizeMode="cover"
+            shouldPlay
+            isLooping
+            style={styles.loadingVideo}
+          />
+         
+        </View>
+        ) : (
+    <Pressable onPress={paymentChoice === 'Card/USSD' ? handleCardUssdBuyAirtime : handleWalletBuyAirtime}>
       <Text style={[styles.buyTypo, styles.buyButton]}>Buy</Text>
     </Pressable>
   )}
@@ -948,6 +979,26 @@ const styles = StyleSheet.create({
   mingcutebackFill: {
     left: 30,
     top: 43,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)', // semi-transparent white background
+  },
+  loadingVideo: {
+    width: wp('100%'),
+    height: hp('20%'),
+    opacity: 0.5, // Reduce opacity of the video
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 5,
   },
   buyAirtime: {
     flex: 1,

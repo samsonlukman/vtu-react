@@ -25,60 +25,53 @@ const SideBar = ({ onClose }) => {
 
   return (
     <>
-      {/* Your sidebar content */}
-      <Pressable
-        style={styles.sideBar}
-        onPress={() => navigation.navigate("Home")}
-      >
-        <View style={[styles.underly, styles.underlyPosition]}>
-          <View style={[styles.underlyChild, styles.underlyPosition]} />
-        </View>
-        <Pressable style={styles.closeSidebar} onPress={onClose}>
-          <Text style={styles.closeSidebarText}>Close Sidebar</Text>
+      {/* Modal to detect outside clicks */}
+      <Modal animationType="none" transparent visible>
+        <Pressable style={styles.overlay} onPress={onClose}>
+          <View style={styles.sidebarContainer}>
+            <View style={styles.sideBar}>
+              <View style={[styles.underly, styles.underlyPosition]}>
+                <View style={[styles.underlyChild, styles.underlyPosition]} />
+              </View>
+              
+              <Pressable
+                style={[styles.connectWith, styles.logoutPosition]}
+                onPress={openLogComplainText}
+              >
+                <Text style={styles.logoutTypo}>Connect Us</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.aboutUs, styles.logoutPosition]}
+                onPress={() => navigation.navigate("About")}
+              >
+                <Text style={styles.logoutTypo}>About Us</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.logComplain, styles.logoutPosition]}
+                onPress={openLogComplainText}
+              >
+                <Text style={styles.logoutTypo}>Log Complain</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.settings, styles.logoutPosition]}
+                onPress={() => navigation.navigate("Setting")}
+              >
+                <Text style={styles.logoutTypo}>Settings</Text>
+              </Pressable>
+              {/* Conditional rendering for Login/Logout */}
+              {user.isAuthenticated ? (
+                <Pressable style={[styles.logout, styles.logoutPosition]} onPress={handleLogout}>
+                  <Text style={styles.logoutTypo}>Logout</Text>
+                </Pressable>
+              ) : (
+                <Pressable style={[styles.logout, styles.logoutPosition]} onPress={() => navigation.navigate("Login")}>
+                  <Text style={styles.logoutTypo}>Login</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
         </Pressable>
-          {/* 
-        <Pressable
-          style={[styles.beneficiary, styles.logoutPosition]}
-          onPress={() => navigation.navigate("Beneficiary")}
-        >
-          <Text style={styles.logoutTypo}>History</Text>
-        </Pressable>
-           */}
-         <Pressable
-          style={[styles.connectWith, styles.logoutPosition]}
-          onPress={openLogComplainText}
-        >
-          <Text style={styles.logoutTypo}>Connect Us</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.aboutUs, styles.logoutPosition]}
-          onPress={() => navigation.navigate("About")}
-        >
-          <Text style={styles.logoutTypo}>About Us</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.logComplain, styles.logoutPosition]}
-          onPress={openLogComplainText}
-        >
-          <Text style={styles.logoutTypo}>Log Complain</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.settings, styles.logoutPosition]}
-          onPress={() => navigation.navigate("Setting")}
-        >
-          <Text style={styles.logoutTypo}>Settings</Text>
-        </Pressable>
-        {/* Conditional rendering for Login/Logout */}
-        {user.isAuthenticated ? (
-          <Pressable style={[styles.logout, styles.logoutPosition]} onPress={handleLogout}>
-            <Text style={styles.logoutTypo}>Logout</Text>
-          </Pressable>
-        ) : (
-          <Pressable style={[styles.logout, styles.logoutPosition]} onPress={() => navigation.navigate("Login")}>
-            <Text style={styles.logoutTypo}>Login</Text>
-          </Pressable>
-        )}
-      </Pressable>
+      </Modal>
 
       {/* Modal for the Frame1 component */}
       <Modal animationType="fade" transparent visible={logComplainTextVisible}>
@@ -93,6 +86,17 @@ const SideBar = ({ onClose }) => {
 };
 
 const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+  },
+  sidebarContainer: {
+    width: 430, // Adjust the width of the sidebar container
+    height: "100%",
+    backgroundColor: "white",
+  },
   underlyPosition: {
     width: 303,
     left: 0,
@@ -156,7 +160,7 @@ const styles = StyleSheet.create({
     position: "absolute",
   },
   aboutUs: {
-    top: 89,
+    top: 30,
   },
   logComplainTextOverlay: {
     flex: 1,
@@ -172,13 +176,13 @@ const styles = StyleSheet.create({
     top: 0,
   },
   logComplain: {
-    top: 170,
+    top: 90,
   },
   settings: {
-    top: 210,
+    top: 120,
   },
   logout: {
-    top: 250,
+    top: 150,
     left: 46,
     position: "absolute",
   },
@@ -190,7 +194,7 @@ const styles = StyleSheet.create({
     height: 932,
   },
   connectWith: {
-    top: 130
+    top: 60
   }
 });
 

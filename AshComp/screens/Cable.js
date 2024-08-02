@@ -5,6 +5,8 @@ import { useNavigation } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { Color, FontFamily, FontSize, Border } from "../GlobalStyles";
 import axios from "axios";
+import { Video } from 'expo-av';
+import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import * as Clipboard from 'expo-clipboard';
 import { useUser } from "../contexts/UserContext";
 import { useNotification } from "../contexts/NotificationContext";// Import the sendPushNotification function
@@ -32,7 +34,7 @@ const Cable = () => {
    useEffect(() => {
     const fetchCsrfToken = async () => {
       try {
-        const csrfResponse = await axios.get('https://payville.pythonanywhere.com/api/get-csrf-token/');
+        const csrfResponse = await axios.get('https://www.payvillesub.com/api/get-csrf-token/');
         setCsrfToken(csrfResponse.data.csrf_token);
       } catch (error) {
         console.error('Error fetching CSRF token:', error.message);
@@ -46,10 +48,12 @@ const Cable = () => {
     fetchDistributionCompanies();
   }, []);
 
+  const referer = 'https://www.payvillesub.com'
+
   const fetchDistributionCompanies = async () => {
     try {
       const response = await axios.get(
-        "https://payville.pythonanywhere.com/api/tv-plans/"
+        "https://www.payvillesub.com/api/tv-plans/"
       );
       setDistributionCompanies(response.data);
     } catch (error) {
@@ -69,6 +73,7 @@ const Cable = () => {
   const handlePaymentChoice = (choice) => {
     setPaymentChoice(choice);
     console.log(choice);
+    Alert.alert(`${choice} selected`)
   };
 
   const handleCopyToClipboard = async () => {
@@ -106,7 +111,8 @@ const Cable = () => {
   
       const flutterwaveHeaders = {
         'Authorization': `Bearer FLWSECK-fab12578d0fa352253f89fd6a7b7b713-18f55ce05d4vt-X`, // Corrected line
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        
       };
   
       const transferResponse = await axios.post('https://api.flutterwave.com/v3/transfers', flutterwaveParams, {
@@ -116,7 +122,7 @@ const Cable = () => {
       if (transferResponse.data.status === 'success' && transferResponse.data.message === 'Transfer Queued Successfully') {
         console.log("Feedback: ", transferResponse.data.message);
   
-        const csrfResponse = await axios.get('https://payville.pythonanywhere.com/api/get-csrf-token/');
+        const csrfResponse = await axios.get('https://www.payvillesub.com/api/get-csrf-token/');
         const csrfToken = csrfResponse.data.csrf_token;
   
         
@@ -133,10 +139,11 @@ const Cable = () => {
   
         console.log('Data sent to backend:', requestBody);
   
-        axios.post('https://payville.pythonanywhere.com/api/buy-tv/', requestBody, {
+        axios.post('https://www.payvillesub.com/api/buy-tv/', requestBody, {
           headers: {
             'X-CSRFToken': csrfToken,
-            'Content-Type': 'application/json' // Ensure you set the correct content type
+            'Content-Type': 'application/json',
+            'referer': referer // Ensure you set the correct content type
           }
         })
           .then(response => {
@@ -151,10 +158,11 @@ const Cable = () => {
               { product_code: selectedProductCode,  number: Number }
             );
 
-            axios.post('https://payville.pythonanywhere.com/api/history/', historyParams, {
+            axios.post('https://www.payvillesub.com/api/history/', historyParams, {
               headers: {
                 'X-CSRFToken': csrfToken,
-                'Content-Type': 'application/json' // Ensure you set the correct content type
+                'Content-Type': 'application/json',
+                'referer': referer // Ensure you set the correct content type
             }
           });
             navigation.navigate("Home")
@@ -202,7 +210,7 @@ const Cable = () => {
             tx_ref: tx_ref,
             amount: amount,
             currency: 'NGN',
-            redirect_url: 'https://payville.pythonanywhere.com/api/index/',
+            redirect_url: 'https://www.payvillesub.com/api/index/',
             customer: {
               email: userData && userData.email ? userData.email : 'anonymous@gmail.com',
               phonenumber: '08080808080',
@@ -216,7 +224,8 @@ const Cable = () => {
 
         const flutterwaveHeaders = {
             'Authorization': `Bearer ${secret_key}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+       
         };
 
         // Make API request to Flutterwave using Axios
@@ -238,7 +247,7 @@ const Cable = () => {
                 retryCount++;
                 try {
                     // Fetch transaction details from your backend
-                    const transactionResponse = await axios.get('https://payville.pythonanywhere.com/api/transactions/', {
+                    const transactionResponse = await axios.get('https://www.payvillesub.com/api/transactions/', {
                         headers: {
                             'X-CSRFToken': csrfToken,
                         }
@@ -262,7 +271,7 @@ const Cable = () => {
                         clearInterval(intervalId);
 
                         // Fetch CSRF token
-                        const csrfResponse = await axios.get('https://payville.pythonanywhere.com/api/get-csrf-token/');
+                        const csrfResponse = await axios.get('https://www.payvillesub.com/api/get-csrf-token/');
                         const csrfToken = csrfResponse.data.csrf_token;
 
                         // Prepare data for VTU API request
@@ -277,10 +286,11 @@ const Cable = () => {
                         }
 
                         // Send POST request to backend API with CSRF token included in headers
-                        const vtuResponse = await axios.post('https://payville.pythonanywhere.com/api/buy-tv/', requestBody, {
+                        const vtuResponse = await axios.post('https://www.payvillesub.com/api/buy-tv/', requestBody, {
                             headers: {
                                 'X-CSRFToken': csrfToken,
-                                'Content-Type': 'application/json' // Ensure you set the correct content type
+                                'Content-Type': 'application/json',
+                                'referer': referer // Ensure you set the correct content type
                             }
                         });
 
@@ -295,10 +305,11 @@ const Cable = () => {
                                 { product_code: selectedProductCode, number: Number }
                             );
 
-                            await axios.post('https://payville.pythonanywhere.com/api/history/', historyParams, {
+                            await axios.post('https://www.payvillesub.com/api/history/', historyParams, {
                                 headers: {
                                     'X-CSRFToken': csrfToken,
-                                    'Content-Type': 'application/json' // Ensure you set the correct content type
+                                    'Content-Type': 'application/json',
+                                    'referer': referer // Ensure you set the correct content type
                                 }
                             });
                             setIsLoading(false); // Stop the loading indicator
@@ -374,9 +385,21 @@ const Cable = () => {
         </View>
         <View style={styles.slide}>
   {isLoading ? (
-    <ActivityIndicator size="large" color="#0000ff" />
+     <View style={styles.loadingContainer}>
+     <Video
+       source={require('../assets/loading.mp4')} // Replace with your video URL
+       rate={1.0}
+       volume={1.0}
+       isMuted={false}
+       resizeMode="cover"
+       shouldPlay
+       isLooping
+       style={styles.loadingVideo}
+     />
+    
+   </View>
   ) : (
-    <Pressable onPress={paymentChoice === 'atm' ? handleCardUssdPayBill : handlePayBill}>
+    <Pressable onPress={paymentChoice === 'Card/USSD' ? handleCardUssdPayBill : handlePayBill}>
       <Text style={[styles.buyTypo, styles.buyButton]}>Buy</Text>
     </Pressable>
   )}
@@ -389,11 +412,11 @@ const Cable = () => {
 <View style={[styles.rectangleParent]}>
 <View style={[styles.groupChild, styles.groupPosition]} />
           <View style={[styles.groupItem, styles.groupPosition]} />
-  <Pressable onPress={() => handlePaymentChoice("atm")} style={[styles.atmPressable, styles.atmPosition]}>
+  <Pressable onPress={() => handlePaymentChoice("Card/USSD")} style={[styles.atmPressable, styles.atmPosition]}>
     <Text style={styles.atm}>Card, USSD</Text>
   </Pressable>
   <Pressable 
-  onPress={() => user && user.isAuthenticated ? handlePaymentChoice("wallet") : Alert.alert("Login to use wallet")} 
+  onPress={() => user && user.isAuthenticated ? handlePaymentChoice("Wallet") : Alert.alert("Login to use wallet")} 
   style={[styles.walletPressable, styles.atmPosition]}
 >
   <Text style={styles.wallet}>WALLET</Text>
@@ -662,6 +685,26 @@ const styles = StyleSheet.create({
     height: 65,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)', // semi-transparent white background
+  },
+  loadingVideo: {
+    width: wp('100%'),
+    height: hp('20%'),
+    opacity: 0.5, // Reduce opacity of the video
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 5,
   },
   rectangleIcon: {
     marginLeft: -56,

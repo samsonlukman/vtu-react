@@ -20,7 +20,7 @@ const Setting = () => {
 
   useEffect(() => {
     // Fetch user data
-    axios.get("http://192.168.43.179:8000/api/user/")
+    axios.get("https://www.payvillesub.com/api/user/")
       .then(response => {
         const user = response.data;
         setUserData(user);
@@ -35,7 +35,7 @@ const Setting = () => {
       });
 
     // Fetch CSRF token
-    axios.get("http://192.168.43.179:8000/api/get-csrf-token/")
+    axios.get("https://www.payvillesub.com/api/get-csrf-token/")
       .then(response => {
         setCsrfToken(response.data.csrf_token);
       })
@@ -55,7 +55,7 @@ const Setting = () => {
     };
 
     try {
-      await axios.put(`http://192.168.43.179:8000/api/edit-profile/${userData.id}/`, updatedUserData, {
+      await axios.put(`https://www.payvillesub.com/api/edit-profile/${userData.id}/`, updatedUserData, {
         
         headers: {
           'X-CSRFToken': csrfToken,
@@ -80,7 +80,7 @@ const Setting = () => {
     };
 
     try {
-      await axios.put("http://192.168.43.179:8000/api/user/change-password/", passwordData, {
+      await axios.put("https://www.payvillesub.com/api/user/change-password/", passwordData, {
         headers: {
           'X-CSRFToken': csrfToken,
           'Content-Type': 'application/json'

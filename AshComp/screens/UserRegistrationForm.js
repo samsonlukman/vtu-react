@@ -10,10 +10,12 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import { useForm, Controller } from 'react-hook-form';
+import { Video } from 'expo-av';
 
-const csrfUrl = 'https://payville.pythonanywhere.com/api/get-csrf-token/';
-const registerUrl = 'https://payville.pythonanywhere.com/api/register/';
+const csrfUrl = 'https://www.payvillesub.com/api/get-csrf-token/';
+const registerUrl = 'https://www.payvillesub.com/api/register/';
 const flutterwaveUrl = 'https://api.flutterwave.com/v3/payout-subaccounts';
+const referer = 'https://www.payvillesub.com'
 
 const UserRegistrationForm = ({ navigation }) => {
   const {
@@ -24,7 +26,7 @@ const UserRegistrationForm = ({ navigation }) => {
   } = useForm();
 
   const [confirmPassword, setConfirmPassword] = useState('');
-
+  const [loading, setLoading] = useState(false);
   const password = watch('password', '');
 
   const onSubmit = async (data) => {
@@ -32,6 +34,8 @@ const UserRegistrationForm = ({ navigation }) => {
       Alert.alert('Password Mismatch', 'Passwords do not match');
       return;
     }
+
+    setLoading(true);
 
     try {
       const csrfResponse = await axios.get(`${csrfUrl}`);
@@ -50,6 +54,7 @@ const UserRegistrationForm = ({ navigation }) => {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer FLWSECK-fab12578d0fa352253f89fd6a7b7b713-18f55ce05d4vt-X',
+            'referer': referer
           }
         }
       );
@@ -90,6 +95,7 @@ const UserRegistrationForm = ({ navigation }) => {
         headers: {
           'Content-Type': 'multipart/form-data',
           'X-CSRFToken': csrfToken,
+          'referer': referer
         },
       });
 
@@ -97,8 +103,10 @@ const UserRegistrationForm = ({ navigation }) => {
       console.log('User Registration Response:', response.data);
 
       Alert.alert('Registration Successful', 'User registered successfully');
+      setLoading(false);
       navigation.navigate('Login');
     } catch (error) {
+      setLoading(false);
       if (error.response && error.response.data) {
         // Display error from Flutterwave API
         Alert.alert('Flutterwave API Error', error.response.data.message);
@@ -110,6 +118,21 @@ const UserRegistrationForm = ({ navigation }) => {
   };
 
   return (
+    <>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <Video
+            source={require('../assets/loading.mp4')}
+            rate={1.0}
+            volume={1.0}
+            isMuted={false}
+            resizeMode="contain"
+            shouldPlay
+            isLooping
+            style={styles.video}
+          />
+        </View>
+      ) : (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>Register</Text>
       <View style={styles.inputContainer}>
@@ -214,6 +237,8 @@ const UserRegistrationForm = ({ navigation }) => {
 
       <Button title="Register" onPress={handleSubmit(onSubmit)} />
     </ScrollView>
+     )}
+    </>
   );
 };
 
@@ -244,6 +269,16 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#e63946',
     marginTop: 5,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  video: {
+    width: 300, // Set the desired width
+    height: 300, // Set the desired height
   },
 });
 

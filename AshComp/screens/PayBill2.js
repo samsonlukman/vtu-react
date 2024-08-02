@@ -6,14 +6,18 @@ import { useNavigation } from "@react-navigation/native";
 import { Color, FontFamily, FontSize, Border } from "../GlobalStyles";
 import { useUser } from "../contexts/UserContext";
 import axios from "axios";
+import { Video } from 'expo-av';
 import { useNotification } from "../contexts/NotificationContext";// Import the sendPushNotification function
 import { sendPushNotification } from "../components/NotificationHandler";
 import { useAuth } from "../contexts/AuthContext";
+import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
+
 
 
 const PayBill2 = () => {
   const navigation = useNavigation();
   const { userData, loading, wallet } = useUser();
+  const referer = 'https://www.payvillesub.com'
   const [accountBank, setAccountBank] = React.useState(""); // State for selected bank code
   const [accountNumber, setAccountNumber] = React.useState(""); // State for account number
   const [amount, setAmount] = React.useState(""); // State for amount
@@ -102,7 +106,8 @@ const PayBill2 = () => {
 
       const flutterwaveHeaders = {
         'Authorization': `Bearer ${secret_key}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        
       };
 
       // Make API request to Flutterwave using Axios
@@ -130,7 +135,8 @@ const PayBill2 = () => {
     }
     
     if(amount > wallet){
-      Alert.alert("Insufficient Balance")
+      Alert.alert("Error", "Login or fund your wallet")
+      return;
     }
   
     setIsLoading(true);
@@ -151,7 +157,8 @@ const PayBill2 = () => {
       
       const flutterwaveHeaders = {
         'Authorization': `Bearer ${secret_key}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+       
       };
 
       const historyParams = {
@@ -169,7 +176,7 @@ const PayBill2 = () => {
         transferResponse.data.message === 'Transfer Queued Successfully'
       ) {
 
-        const csrfResponse = await axios.get('https://payville.pythonanywhere.com/api/get-csrf-token/');
+        const csrfResponse = await axios.get('https://www.payvillesub.com/api/get-csrf-token/');
         const csrfToken = csrfResponse.data.csrf_token;
         
         console.log("Feedback: ", transferResponse.data.message);
@@ -181,10 +188,11 @@ const PayBill2 = () => {
           { amount: amount, accountNumber: accountNumber }
         );
 
-        await axios.post('https://payville.pythonanywhere.com/api/history/', historyParams, {
+        await axios.post('https://www.payvillesub.com/api/history/', historyParams, {
               headers: {
                 'X-CSRFToken': csrfToken,
-                'Content-Type': 'application/json' // Ensure you set the correct content type
+                'Content-Type': 'application/json',
+                'referer': referer // Ensure you set the correct content type
             }
           });
 
@@ -232,7 +240,19 @@ const PayBill2 = () => {
 
       {/* Display account name */}
       {isLoading ? (
-          <ActivityIndicator size="small" color="#0000ff" />
+         <View style={styles.loadingContainer}>
+         <Video
+           source={require('../assets/loading.mp4')} // Replace with your video URL
+           rate={1.0}
+           volume={1.0}
+           isMuted={false}
+           resizeMode="cover"
+           shouldPlay
+           isLooping
+           style={styles.loadingVideo}
+         />
+        
+       </View>
         ) : (
           accountName !== "" && <Text style={[styles.nameDisplay, styles.selectTypo]}>{toTitleCase(accountName)}</Text>
         )}
@@ -256,7 +276,19 @@ const PayBill2 = () => {
 
       <View style={styles.slide}>
        {isLoading ? (
-    <ActivityIndicator size="large" color="#0000ff" />
+    <View style={styles.loadingContainer}>
+    <Video
+      source={require('../assets/loading.mp4')} // Replace with your video URL
+      rate={1.0}
+      volume={1.0}
+      isMuted={false}
+      resizeMode="cover"
+      shouldPlay
+      isLooping
+      style={styles.loadingVideo}
+    />
+   
+  </View>
 ) : (
   <Pressable onPress={handleTransfer}>
   <Text style={[ styles.buyTypo, styles.buyButton]}>Send</Text>
@@ -435,6 +467,26 @@ const styles = StyleSheet.create({
     elevation: 60,
     width: '50%',
     paddingLeft: 15
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)', // semi-transparent white background
+  },
+  loadingVideo: {
+    width: wp('100%'),
+    height: hp('20%'),
+    opacity: 0.5, // Reduce opacity of the video
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 5,
   },
   selectAmount: {
     top: 413,

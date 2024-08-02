@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "payville",
-    "slug": "payville",
+    "name": "Payville",
+    "slug": "Payville",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/payapp.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/payapp.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -25,11 +25,11 @@
           "https"
         ]
       },
-      "bundleIdentifier": "com.samsonlukman.payville"
+      "bundleIdentifier": "com.payville"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/payapp.png",
         "backgroundColor": "#FFFFFF"
       },
       "intentFilters": [
@@ -51,14 +51,14 @@
           ]
         }
       ],
-      "package": "com.samsonlukman.payville"
+      "package": "com.payville"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/payapp.png"
     },
     "extra": {
       "eas": {
-        "projectId": "f40c2d37-f02d-4370-81a0-559d15d734c6"
+        "projectId": "e4c4fb91-c17d-4bad-a90c-093d057d80ec"
       }
     }
   }

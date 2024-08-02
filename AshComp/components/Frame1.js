@@ -8,11 +8,11 @@ const Frame1 = () => {
   const [visible, setVisible] = React.useState(true);
 
   const handleWhatsApp = () => {
-    Linking.openURL(`whatsapp://send?text=Hello&phone=+2349066440069`);
+    Linking.openURL(`whatsapp://send?text=https://play.google.com/store/apps/details?id=com.payville`);
   };
 
   const handleEmail = () => {
-    Linking.openURL('mailto:worknorm99@gmail.com?subject=Complaint&body=Hello%20there');
+    Linking.openURL('mailto:body=Hello%20there');
   };
 
   const handleClose = () => {

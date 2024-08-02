@@ -12,7 +12,7 @@ const History = () => {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const response = await axios.get('https://payville.pythonanywhere.com/api/history/');
+        const response = await axios.get('https://www.payvillesub.com/api/history/');
         const sortedData = response.data.sort((a, b) => b.id - a.id); // Assuming there's an id field to sort by
         setHistoryData(sortedData);
         setLoading(false);

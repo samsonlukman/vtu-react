@@ -2,11 +2,13 @@ import * as React from "react";
 import { StyleSheet, View, Text, Pressable, TextInput, ActivityIndicator, Alert } from "react-native";
 import { useState, useEffect } from "react";
 import { Image } from "expo-image";
+import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { useNavigation } from "@react-navigation/native";
 import { Color, FontFamily, FontSize, Border } from "../GlobalStyles";
 import { Picker } from "@react-native-picker/picker";
 import * as Clipboard from 'expo-clipboard';
 import axios from "axios";
+import { Video } from 'expo-av';
 import { useUser } from "../contexts/UserContext";
 import { useNotification } from "../contexts/NotificationContext";// Import the sendPushNotification function
 import { sendPushNotification } from "../components/NotificationHandler";
@@ -30,7 +32,7 @@ const PayBill = () => {
    useEffect(() => {
     const fetchCsrfToken = async () => {
       try {
-        const csrfResponse = await axios.get('https://payville.pythonanywhere.com/api/get-csrf-token/');
+        const csrfResponse = await axios.get('https://www.payvillesub.com/api/get-csrf-token/');
         setCsrfToken(csrfResponse.data.csrf_token);
       } catch (error) {
         console.error('Error fetching CSRF token:', error.message);
@@ -52,7 +54,7 @@ const PayBill = () => {
 
   const fetchData = async () => {
     try {
-      const response = await fetch("https://payville.pythonanywhere.com/api/phcn-plans/");
+      const response = await fetch("https://www.payvillesub.com/api/phcn-plans/");
       const data = await response.json();
       setDistributionCompanies(data);
     } catch (error) {
@@ -70,6 +72,7 @@ const PayBill = () => {
   const handlePaymentChoice = (choice) => {
     setPaymentChoice(choice);
     console.log(choice);
+    Alert.alert(`${choice} selected`)
   };
 
   const handleServiceNameChange = (productCode) => {
@@ -108,7 +111,7 @@ const PayBill = () => {
       if (transferResponse.data.status === 'success' && transferResponse.data.message === 'Transfer Queued Successfully') {
         console.log("Feedback: ", transferResponse.data.message);
   
-        const csrfResponse = await axios.get('https://payville.pythonanywhere.com/api/get-csrf-token/');
+        const csrfResponse = await axios.get('https://www.payvillesub.com/api/get-csrf-token/');
         const csrfToken = csrfResponse.data.csrf_token;
   
         const requestBody = {
@@ -124,7 +127,7 @@ const PayBill = () => {
   
         console.log('Data sent to backend:', requestBody);
   
-        axios.post('https://payville.pythonanywhere.com/api/buy-phcn/', requestBody, {
+        axios.post('https://www.payvillesub.com/api/buy-phcn/', requestBody, {
           headers: {
             'X-CSRFToken': csrfToken,
             'Content-Type': 'application/json' // Ensure you set the correct content type
@@ -142,7 +145,7 @@ const PayBill = () => {
               { amount: amount, number: Number }
             );
 
-            axios.post('https://payville.pythonanywhere.com/api/history/', historyParams, {
+            axios.post('https://www.payvillesub.com/api/history/', historyParams, {
               headers: {
                 'X-CSRFToken': csrfToken,
                 'Content-Type': 'application/json' // Ensure you set the correct content type
@@ -193,7 +196,7 @@ const PayBill = () => {
             tx_ref: tx_ref,
             amount: amount,
             currency: 'NGN',
-            redirect_url: 'https://payville.pythonanywhere.com/api/index/',
+            redirect_url: 'https://www.payvillesub.com/api/index/',
             customer: {
               email: userData && userData.email ? userData.email : 'anonymous@gmail.com',
               phonenumber: '08080808080',
@@ -228,7 +231,7 @@ const PayBill = () => {
                 retryCount++;
                 try {
                     // Fetch transaction details from your backend
-                    const transactionResponse = await axios.get('httsp://payville.pythonanywhere.com/api/transactions/', {
+                    const transactionResponse = await axios.get('httsp://payvillesub.com/api/transactions/', {
                         headers: {
                             'X-CSRFToken': csrfToken,
                         }
@@ -252,7 +255,7 @@ const PayBill = () => {
                         clearInterval(intervalId);
 
                         // Fetch CSRF token
-                        const csrfResponse = await axios.get('https://payville.pythonanywhere.com/api/get-csrf-token/');
+                        const csrfResponse = await axios.get('https://www.payvillesub.com/api/get-csrf-token/');
                         const csrfToken = csrfResponse.data.csrf_token;
 
                         // Prepare data for VTU API request
@@ -268,7 +271,7 @@ const PayBill = () => {
                         };
 
                         // Send POST request to backend API with CSRF token included in headers
-                        const vtuResponse = await axios.post('https://payville.pythonanywhere.com/api/buy-phcn/', requestBody, {
+                        const vtuResponse = await axios.post('https://www.payvillesub.com/api/buy-phcn/', requestBody, {
                             headers: {
                                 'X-CSRFToken': csrfToken,
                                 'Content-Type': 'application/json' // Ensure you set the correct content type
@@ -286,7 +289,7 @@ const PayBill = () => {
                                 { amount: amount, number: Number }
                             );
 
-                            await axios.post('https://payville.pythonanywhere.com/api/history/', historyParams, {
+                            await axios.post('https://www.payvillesub.com/api/history/', historyParams, {
                                 headers: {
                                     'X-CSRFToken': csrfToken,
                                     'Content-Type': 'application/json' // Ensure you set the correct content type
@@ -356,9 +359,21 @@ const PayBill = () => {
       
       <View style={styles.slide}>
   {isLoading ? (
-    <ActivityIndicator size="large" color="#0000ff" />
+     <View style={styles.loadingContainer}>
+     <Video
+       source={require('../assets/loading.mp4')} // Replace with your video URL
+       rate={1.0}
+       volume={1.0}
+       isMuted={false}
+       resizeMode="cover"
+       shouldPlay
+       isLooping
+       style={styles.loadingVideo}
+     />
+    
+   </View>
   ) : (
-    <Pressable onPress={paymentChoice === 'atm' ? handleCardUssdPayPhcn : handlePayBill}>
+    <Pressable onPress={paymentChoice === 'Card/USSD' ? handleCardUssdPayPhcn : handlePayBill}>
       <Text style={[styles.buyTypo, styles.buyButton]}>Buy</Text>
     </Pressable>
   )}
@@ -371,11 +386,11 @@ const PayBill = () => {
 <View style={[styles.rectangleParent]}>
 <View style={[styles.groupChild, styles.groupPosition]} />
           <View style={[styles.groupItem, styles.groupPosition]} />
-  <Pressable onPress={() => handlePaymentChoice("atm")} style={[styles.atmPressable, styles.atmPosition]}>
+  <Pressable onPress={() => handlePaymentChoice("Card/USSD")} style={[styles.atmPressable, styles.atmPosition]}>
     <Text style={styles.atm}>Card, USSD</Text>
   </Pressable>
   <Pressable 
-  onPress={() => user && user.isAuthenticated ? handlePaymentChoice("wallet") : Alert.alert("Login to use wallet")} 
+  onPress={() => user && user.isAuthenticated ? handlePaymentChoice("Wallet") : Alert.alert("Login to use wallet")} 
   style={[styles.walletPressable, styles.atmPosition]}
 >
   <Text style={styles.wallet}>WALLET</Text>
@@ -663,6 +678,22 @@ const styles = StyleSheet.create({
     color: Color.colorWhite,
     fontFamily: FontFamily.robotoBold,
     fontWeight: "700",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)', // semi-transparent white background
+  },
+  loadingVideo: {
+    width: wp('100%'),
+    height: hp('20%'),
+    opacity: 0.5, // Reduce opacity of the video
   },
   rectangleParent: {
     top: 260,

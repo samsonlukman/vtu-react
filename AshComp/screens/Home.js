@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Image } from "expo-image";
-import { Animated, StyleSheet, Text, View, Pressable, Modal, ScrollView, Button, Alert, SafeAreaView } from "react-native";
+import { Animated, FlatList, TouchableOpacity, StyleSheet, Text, View, Pressable, Modal, ScrollView, Button, Alert, SafeAreaView } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import Frame1 from "../components/Frame1";
 import Frame2 from "../components/frame2";
@@ -11,7 +11,7 @@ import { useAuth } from "../contexts/AuthContext";
 import axios from "axios";
 import { Dimensions } from 'react-native';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
-
+import * as Clipboard from 'expo-clipboard';
 
 const Home = () => {
   const navigation = useNavigation();
@@ -20,7 +20,13 @@ const Home = () => {
   const [sLIDEContainerVisible, setSLIDEContainerVisible] = useState(false);
   const [vectorIconVisible, setVectorIconVisible] = useState(false);
   const [wallet, setWallet] = useState("***");
+  const handleCopyToClipboard = (textToCopy) => {
+    Clipboard.setString(textToCopy);
+    Alert.alert('Copied to Clipboard', `The following text has been copied to your clipboard: "${textToCopy}"`);
+  };
 
+  
+  
   const openRectangle1 = useCallback(() => {
     setRectangle1Visible(true);
   }, []);
@@ -74,7 +80,7 @@ const Home = () => {
 
   const fetchUserData = useCallback(async () => {
     try {
-      const response = await fetch('https://payville.pythonanywhere.com/api/user/');
+      const response = await fetch('https://www.payvillesub.com/api/user/');
       const data = await response.json();
       setUserData(data);
       setLoading(false); // Set loading to false after fetching user data
@@ -93,6 +99,7 @@ const Home = () => {
     }
   }, [user, fetchUserData]);
 
+  const referer = 'https://www.payvillesub.com'
   
   const fetchAccountInfo = useCallback(async () => {
     try {
@@ -130,17 +137,18 @@ const Home = () => {
     }
   }, [userData, fetchAccountInfo]);
 
-  const csrfUrl = 'https://payville.pythonanywhere.com/api/get-csrf-token/';
+  const csrfUrl = 'https://www.payvillesub.com/api/get-csrf-token/';
 
   const incrementAccountBalance = async (amount) => {
     try {
       const csrfResponse = await axios.get(`${csrfUrl}`);
       const csrfToken = csrfResponse.data.csrf_token;
-      const url = 'https://payville.pythonanywhere.com/api/increment-account-balance/';
+      const url = 'https://www.payvillesub.com/api/increment-account-balance/';
       
       const headers = {
         'Content-Type': 'multipart/form-data',
         'X-CSRFToken': csrfToken,
+        'referer': referer
       };
   
       const data = new FormData();
@@ -156,6 +164,53 @@ const Home = () => {
     } catch (error) {
       console.error('Error updating account balance:', error.message);
     }
+  };
+
+  const renderGridItem = ({ item, index }) => (
+    <View style={styles.gridItem}>
+      <Image style={styles.gridImage} source={item.imageSource} />
+      <Text style={styles.gridText}>{item.text}</Text>
+    </View>
+  );
+
+  const data = [
+    { id: '1', imageSource: require("../assets/rectangle-10.png"), text: 'Buy Airtime', screen: 'BuyAirtime' },
+    { id: '2', imageSource: require("../assets/rectangle-11.png"), text: 'Data', screen: 'BuyData' },
+    { id: '3', imageSource: require("../assets/rectangle-12.png"), text: 'Pay Bill', screen: 'PayBill' },
+    { id: '4', imageSource: require("../assets/rectangle-9.png"), text: 'Cable', screen: 'Cable' },
+    { id: '5', imageSource: require("../assets/rectangle-15.png"), text: 'SME Data', screen: 'BuySmeData' },
+    { id: '6', imageSource: require("../assets/rectangle-16.png"), text: 'Withdrawal', screen: 'PayBill2' },
+    { id: '7', imageSource: require("../assets/vector.png"), text: 'Share App', screen: '' },
+    { id: '8', imageSource: require("../assets/materialsymbolscontactpage.png"), text: 'Contact Us', screen: '' },
+    { id: '9', text: '', screen: '' },  // No imageSource
+  ];
+
+
+  const renderItem = ({ item }) => {
+    const handlePress = () => {
+      if (item.id === '7') {
+        openRectangle1();
+      } else if (item.id === '8') {
+        openRectangle2();
+      } else {
+        navigation.navigate(item.screen);
+      }
+    };
+
+    const itemStyle = [
+      styles.itemContainer,
+      item.id === '7' && styles.specialItemContainerPink,
+      item.id === '8' && styles.specialItemContainerBlack,
+    ];
+
+    const textStyle = item.id === '8' ? styles.specialItemText : styles.text;
+
+    return (
+      <TouchableOpacity style={itemStyle} onPress={handlePress}>
+        <Image source={item.imageSource} style={styles.image} />
+        <Text style={textStyle}>{item.text}</Text>
+      </TouchableOpacity>
+    );
   };
 
   incrementAccountBalance();
@@ -233,141 +288,29 @@ const Home = () => {
         
         
 
-        <View style={styles.serviceButtons}>
-          <View style={[styles.cable, styles.cableLayout]}>
-            <Pressable
-              style={[styles.wrapper, styles.cableLayout]}
-              onPress={() => navigation.navigate("Cable")}
-            >
-              <Image
-                style={[styles.icon, styles.iconLayout1]}
-                contentFit="cover"
-                source={require("../assets/rectangle-9.png")}
-              />
-            </Pressable>
-            <Text style={[styles.payForCable, styles.fundWallet1Typo]}>
-              Pay for Cable
-            </Text>
-          </View>
-          <View style={[styles.withdraw, styles.payBillPosition]}>
-            <Pressable
-              style={[styles.wrapper, styles.cableLayout]}
-              onPress={() => navigation.navigate("PayBill2")}
-            >
-              <Image
-                style={[styles.icon, styles.iconLayout1, {right: wp('6%') }]}
-                contentFit="cover"
-                source={require("../assets/rectangle-16.png")}
-              />
-            </Pressable>
-            <Text style={[styles.withdrawal, styles.shareAppTypo]}>
-              Withdrawal
-            </Text>
-          </View>
-          <Pressable
-            style={[styles.frame, styles.framePosition]}
-            onPress={() => navigation.navigate("BuySmeData")}
-          >
-            <Image
-              style={[styles.icon, styles.iconLayout1]}
-              contentFit="cover"
-              source={require("../assets/rectangle-15.png")}
-            />
-          </Pressable>
-          <View style={[styles.wrapper, styles.cableLayout]}>
-            <Pressable
-              style={[styles.wrapper, styles.cableLayout]}
-              onPress={() => navigation.navigate("BuyAirtime")}
-            >
-              <Image
-                style={[styles.icon, styles.iconLayout1]}
-                contentFit="cover"
-                source={require("../assets/rectangle-10.png")}
-              />
-            </Pressable>
-            <Text
-              style={[styles.buyAirtime1, styles.buyTypo]}
-            >{`Buy Airtime  `}</Text>
-          </View>
-          <View style={[styles.buyData, styles.framePosition]}>
-            <Pressable
-              style={[styles.wrapper, styles.cableLayout]}
-              onPress={() => navigation.navigate("BuyData")}
-            >
-              <Image
-                style={[styles.icon, styles.iconLayout1]}
-                contentFit="cover"
-                source={require("../assets/rectangle-11.png")}
-              />
-            </Pressable>
-            <Text style={[styles.buyData1, styles.buyTypo]}>Corporate Data</Text>
-          </View>
-          <Image
-            style={[styles.serviceButtonsChild, styles.payBillPhcn]}
-            contentFit="cover"
-            source={require("../assets/rectangle-12.png")}
-          />
-          <View style={[styles.payBill, styles.payBillPosition]}>
-            <Pressable
-              style={[styles.wrapper, styles.cableLayout]}
-              onPress={() => navigation.navigate("PayBill")}
-            >
-             
-            </Pressable>
-            <Text style={[styles.payBill1, styles.buyTypo]}>Pay Bill</Text>
-          </View>
-          <Text style={[styles.rechargePin, styles.fundWallet1Typo]}>
-            SME Data
-          </Text>
+          <FlatList
+        data={data}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        numColumns={3}
+        contentContainerStyle={styles.flatListContainer}
+      />
+
+
+          
+         
+          
+          
+          
+          
+          
          
 
-  <View style={[styles.contactUs, styles.sharePosition]}>
-  <Pressable onPress={openRectangle1} style={{ flex: 1 }}>
-    <View style={[styles.contactUsChild, styles.childShadowBox]} />
-
-    <Image
-      style={styles.contactUsItem}
-      contentFit="cover"
-      source={require("../assets/rectangle-26.png")}
-    />
-
-    <Image
-      style={[
-        styles.materialSymbolscontactPageIcon,
-        styles.iconPosition,
-      ]}
-      contentFit="cover"
-      source={require("../assets/materialsymbolscontactpage.png")}
-    />
-
-    <Text style={[styles.contactPosition, styles.shareAppTypo]}>
-      Contact Us
-    </Text>
-    </Pressable>
-  </View>
+  
 
 
 
-          <View style={[styles.share, styles.sharePosition]}>
-            <Pressable
-              style={[styles.shareChild, styles.childShadowBox]}
-              onPress={openRectangle2}
-            />
-            <Image
-              style={styles.shareItem}
-              contentFit="cover"
-              source={require("../assets/rectangle-25.png")}
-            />
-            <Image
-              style={[styles.vectorIcon, styles.iconLayout]}
-              contentFit="cover"
-              source={require("../assets/vector.png")}
-            />
-            <Text style={[styles.shareApp, styles.shareAppTypo]}>
-              Share App
-            </Text>
-          </View>
-        </View>
+          
         
         <Pressable style={styles.vector} onPress={openVectorIcon}>
           <Image
@@ -479,6 +422,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     position: "absolute",
   },
+  withdrawPosition: {
+    left: 240
+  },
   cableLayout: {
     height: hp('15.75%'), // 126 pixels
     width: wp('28%'), // 112 pixels
@@ -491,6 +437,45 @@ const styles = StyleSheet.create({
   },
   contactPosition: {
     left: '20%',
+  },
+  flatListContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    marginTop: 400
+  },
+  itemContainer: {
+    flex: 1,
+    alignItems: 'center',
+    margin: 8,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+    width: 100, // Adjust the width as per your requirement
+    height: 120, // Adjust the height as per your requirement
+  },
+  specialItemContainerPink: {
+    backgroundColor: 'pink',
+    
+  },
+  specialItemContainerBlack: {
+    backgroundColor: 'black',
+  },
+  image: {
+    width: 80,
+    height: 80,
+    resizeMode: 'contain',
+  },
+  text: {
+    marginTop: 8,
+    fontSize: 14,
+    textAlign: 'center',
+    color: 'black',
+  },
+  specialItemText: {
+    marginTop: 8,
+    fontSize: 14,
+    textAlign: 'center',
+    color: 'white',
   },
   payBillPosition: {
     
@@ -533,6 +518,25 @@ const styles = StyleSheet.create({
     top: 316,
     height: 126,
     position: "absolute",
+  },
+  gridContainer: {
+    paddingHorizontal: 10,
+    top: 500,
+    paddingBottom: 50, // Adjust this value as needed
+  },
+  gridItem: {
+    flex: 1,
+    margin: 8,
+    alignItems: 'center',
+  },
+  gridImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 10,
+  },
+  gridText: {
+    marginTop: 8,
+    textAlign: 'center',
   },
   childShadowBox: {
     shadowOpacity: 1,
@@ -590,7 +594,7 @@ const styles = StyleSheet.create({
     textAlign: "left",
   },
   homeItem: {
-    top: '20%',
+    top: '15%',
     left: '6%', // Adjusted left position
     borderRadius: 29,
     width: '90%', // Reduced width by 20 units
@@ -599,44 +603,44 @@ const styles = StyleSheet.create({
   },
   
   phoneBill1Icon: {
-    top: hp('21%'), // Converted top to percentage
+    top: hp('15%'), // Converted top to percentage
     width: wp('50%'), // Converted width to percentage
     height: hp('25%'), // Converted height to percentage
     left: wp('50%'), // Converted left to percentage
     position: "absolute",
   },
   homeInner: {
-    top: hp('40.75%'), // 326 pixels
+    top: hp('35.75%'), // 326 pixels
     left: wp('51.75%'), // 207 pixels
     width: wp('27%'), // 108 pixels
     height: hp('1.75%'), // 14 pixels
     position: "absolute",
   },
   wallet: {
-    top: 224,
+    top: 170,
   },
   bonus: {
-    top: 305,
+    top: 240,
   },
   n2460000: {
-    top: 253,
+    top: 200,
     color: Color.colorWhite,
     left: 63,
     fontSize: FontSize.size_xl,
   },
   n24600001: {
-    top: 334,
+    top: 270,
     color: Color.colorWhite,
     left: 63,
     fontSize: FontSize.size_xl,
   },
   rectangleView: {
-    top: 453,
+    top: 380,
     backgroundColor: Color.colorGainsboro_100,
     height: 36,
   },
   history: {
-    top: 459,
+    top: 380,
     left: 400,
     color: Color.colorDarkcyan_100,
   },

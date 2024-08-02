@@ -7,6 +7,7 @@ import { Color, FontFamily, FontSize, Border } from "../GlobalStyles";
 import { Picker } from "@react-native-picker/picker";
 import * as Clipboard from 'expo-clipboard';
 import axios from "axios";
+import { Video } from 'expo-av';
 import { useUser } from "../contexts/UserContext";
 import { useNotification } from "../contexts/NotificationContext";// Import the sendPushNotification function
 import { sendPushNotification } from "../components/NotificationHandler";
@@ -28,12 +29,13 @@ const BuyData = () => {
   const expoPushToken = useNotification();
   const { user } = useAuth();
   const [csrfToken, setCsrfToken] = useState("");
+  const referer = 'https://www.payvillesub.com'
 
    // Fetch CSRF token when component mounts
    useEffect(() => {
     const fetchCsrfToken = async () => {
       try {
-        const csrfResponse = await axios.get('https://payville.pythonanywhere.com/api/get-csrf-token/');
+        const csrfResponse = await axios.get('https://www.payvillesub.com/api/get-csrf-token/');
         setCsrfToken(csrfResponse.data.csrf_token);
       } catch (error) {
         console.error('Error fetching CSRF token:', error.message);
@@ -45,7 +47,7 @@ const BuyData = () => {
 
 
   React.useEffect(() => {
-    axios.get("https://payville.pythonanywhere.com/api/sme-plans/")
+    axios.get("https://www.payvillesub.com/api/sme-plans/")
       .then(response => {
         const data = response.data;
         setProductCodeOptions({
@@ -55,6 +57,7 @@ const BuyData = () => {
           "nineMobile": data.nineMobile.nineMobile_data,
         });
         setPlansLoading(false);
+        console.log(data)
       })
       .catch(error => {
         console.error('Error fetching data plans:', error);
@@ -85,6 +88,7 @@ const BuyData = () => {
   const handlePaymentChoice = (choice) => {
     setPaymentChoice(choice);
     console.log(choice);
+    Alert.alert(`${choice} selected`)
   };
 
   const handleBuySmeData = async () => {
@@ -114,7 +118,8 @@ const BuyData = () => {
         
         const flutterwaveHeaders = {
             'Authorization': `Bearer ${secret_key}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+           
         };
 
         // Make API request to Flutterwave using Axios
@@ -126,7 +131,7 @@ const BuyData = () => {
             console.log("Feedback: ", transferResponse.data.message);
 
             // Fetch CSRF token
-            const csrfResponse = await axios.get('https://payville.pythonanywhere.com/api/get-csrf-token/');
+            const csrfResponse = await axios.get('https://www.payvillesub.com/api/get-csrf-token/');
             const csrfToken = csrfResponse.data.csrf_token;
 
             // Prepare data for VTU API request
@@ -141,10 +146,11 @@ const BuyData = () => {
             }
 
             // Send POST request to backend API with CSRF token included in headers
-            const vtuResponse = await axios.post('https://payville.pythonanywhere.com/api/buy-sme-data/', requestBody, {
+            const vtuResponse = await axios.post('https://www.payvillesub.com/api/buy-sme-data/', requestBody, {
                 headers: {
                     'X-CSRFToken': csrfToken,
-                    'Content-Type': 'application/json' // Ensure you set the correct content type
+                    'Content-Type': 'application/json',
+                    'referer': referer // Ensure you set the correct content type
                 }
             });
 
@@ -160,10 +166,11 @@ const BuyData = () => {
               { product_code: productCode,  phoneNumber }
             );
 
-            await axios.post('https://payville.pythonanywhere.com/api/history/', historyParams, {
+            await axios.post('https://www.payvillesub.com/api/history/', historyParams, {
               headers: {
                 'X-CSRFToken': csrfToken,
-                'Content-Type': 'application/json' // Ensure you set the correct content type
+                'Content-Type': 'application/json',
+                'referer': referer // Ensure you set the correct content type
             }
           });
             navigation.navigate("Home")
@@ -216,7 +223,7 @@ const handleCardUssdBuySmeData = async () => {
           tx_ref: tx_ref,
           amount: parseInt(selectedProduct.service_default_price) + 50,
           currency: 'NGN',
-          redirect_url: 'https://payville.pythonanywhere.com/api/index/',
+          redirect_url: 'https://www.payvillesub.com/api/index/',
           customer: {
             email: userData && userData.email ? userData.email : 'anonymous@gmail.com',
             phonenumber: '08080808080',
@@ -230,7 +237,8 @@ const handleCardUssdBuySmeData = async () => {
 
       const flutterwaveHeaders = {
           'Authorization': `Bearer ${secret_key}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+        
       };
 
       // Make API request to Flutterwave using Axios
@@ -252,7 +260,7 @@ const handleCardUssdBuySmeData = async () => {
               retryCount++;
               try {
                   // Fetch transaction details from your backend
-                  const transactionResponse = await axios.get('https://payville.pythonanywhere.com/api/transactions/', {
+                  const transactionResponse = await axios.get('https://www.payvillesub.com/api/transactions/', {
                       headers: {
                           'X-CSRFToken': csrfToken,
                       }
@@ -276,7 +284,7 @@ const handleCardUssdBuySmeData = async () => {
                       clearInterval(intervalId);
 
                       // Fetch CSRF token
-                      const csrfResponse = await axios.get('https://payville.pythonanywhere.com/api/get-csrf-token/');
+                      const csrfResponse = await axios.get('https://www.payvillesub.com/api/get-csrf-token/');
                       const csrfToken = csrfResponse.data.csrf_token;
 
                       // Prepare data for VTU API request
@@ -291,10 +299,11 @@ const handleCardUssdBuySmeData = async () => {
                       }
 
                       // Send POST request to backend API with CSRF token included in headers
-                      const vtuResponse = await axios.post('https://payville.pythonanywhere.com/api/buy-sme-data/', requestBody, {
+                      const vtuResponse = await axios.post('https://www.payvillesub.com/api/buy-sme-data/', requestBody, {
                           headers: {
                               'X-CSRFToken': csrfToken,
-                              'Content-Type': 'application/json' // Ensure you set the correct content type
+                              'Content-Type': 'application/json',
+                              'referer': referer // Ensure you set the correct content type
                           }
                       });
 
@@ -309,10 +318,11 @@ const handleCardUssdBuySmeData = async () => {
                               { product_code: productCode, phoneNumber }
                           );
 
-                          await axios.post('https://payville.pythonanywhere.com/api/history/', historyParams, {
+                          await axios.post('https://www.payvillesub.com/api/history/', historyParams, {
                               headers: {
                                   'X-CSRFToken': csrfToken,
-                                  'Content-Type': 'application/json' // Ensure you set the correct content type
+                                  'Content-Type': 'application/json',
+                                  'referer': referer // Ensure you set the correct content type
                               }
                           });
                           setIsLoading(false); // Stop the loading indicator
@@ -421,11 +431,11 @@ const handleCardUssdBuySmeData = async () => {
       <View style={[styles.rectangleContainer, styles.groupChildLayout3]}>
   <View style={[styles.groupChild3, styles.groupChildPosition1]} />
   <View style={[styles.groupChild4, styles.groupChildPosition]} />
-  <Pressable onPress={() => handlePaymentChoice("atm")} style={[styles.atmPressable, styles.atmPosition]}>
+  <Pressable onPress={() => handlePaymentChoice("Card/USSD")} style={[styles.atmPressable, styles.atmPosition]}>
     <Text style={styles.atm}>Card, USSD</Text>
   </Pressable>
   <Pressable 
-  onPress={() => user && user.isAuthenticated ? handlePaymentChoice("wallet") : Alert.alert("Login to use wallet")} 
+  onPress={() => user && user.isAuthenticated ? handlePaymentChoice("Wallet") : Alert.alert("Login to use wallet")} 
   style={[styles.walletPressable, styles.atmPosition]}
 >
   <Text style={styles.wallet}>WALLET</Text>
@@ -471,9 +481,21 @@ const handleCardUssdBuySmeData = async () => {
    
 <View style={styles.slide}>
   {isLoading ? (
-    <ActivityIndicator size="large" color="#0000ff" />
+    <View style={styles.loadingContainer}>
+    <Video
+      source={require('../assets/loading.mp4')} // Replace with your video URL
+      rate={1.0}
+      volume={1.0}
+      isMuted={false}
+      resizeMode="cover"
+      shouldPlay
+      isLooping
+      style={styles.loadingVideo}
+    />
+   
+  </View>
   ) : (
-    <Pressable onPress={paymentChoice === 'atm' ? handleCardUssdBuySmeData : handleBuySmeData}>
+    <Pressable onPress={paymentChoice === 'Card/USSD' ? handleCardUssdBuySmeData : handleBuySmeData}>
       <Text style={[styles.buyTypo, styles.buyButton]}>Buy</Text>
     </Pressable>
   )}
@@ -607,6 +629,22 @@ const styles = StyleSheet.create({
     height: 40,
     top: 0,
     position: "absolute",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)', // semi-transparent white background
+  },
+  loadingVideo: {
+    width: wp('100%'),
+    height: hp('20%'),
+    opacity: 0.5, // Reduce opacity of the video
   },
   groupChildLayout: {
     width: 48,
@@ -802,7 +840,7 @@ const styles = StyleSheet.create({
   },
   rectangleContainer: {
     top: 200,
-    left: 40,
+    left: '11%',
     width: 300,
     height: 65,
   },
